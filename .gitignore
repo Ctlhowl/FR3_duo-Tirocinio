@@ -6,7 +6,7 @@ COLCON_IGNORE
 AMENT_IGNORE
 cmake-build-*/
 build/
-src/install/
-src/log/
+install/
+log/
 src/franka_ros2/libfranka
 src/franka_ros2/franka_description

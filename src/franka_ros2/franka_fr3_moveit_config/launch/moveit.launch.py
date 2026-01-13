@@ -212,7 +212,7 @@ def generate_launch_description():
 
     # Load controllers
     load_controllers = []
-    for controller in ['fr3_arm_controller', 'joint_state_broadcaster']:
+    for controller in ['fr3_arm_controller', 'joint_state_broadcaster', 'fr3_hand_controller']:
         load_controllers.append(
             ExecuteProcess(
                 cmd=[

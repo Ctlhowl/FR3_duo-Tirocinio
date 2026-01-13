@@ -11,6 +11,9 @@
 
       franka_robot_state_broadcaster:
         type: franka_robot_state_broadcaster/FrankaRobotStateBroadcaster
+      
+      fr3_hand_controller:
+        type: joint_trajectory_controller/JointTrajectoryController
 
 /**:
   franka_robot_state_broadcaster:
@@ -24,7 +27,8 @@
   fr3_arm_controller:
     ros__parameters:
       command_interfaces:
-        - effort
+        - position
+        #- effort
       state_interfaces:
         - position
         - velocity
@@ -44,3 +48,14 @@
         fr3_joint5: { p: 250., d: 10., i: 0., i_clamp: 1. }
         fr3_joint6: { p: 150., d: 10., i: 0., i_clamp: 1. }
         fr3_joint7: { p: 50., d: 5., i: 0., i_clamp: 1. }
+
+/**:
+  fr3_hand_controller:
+    ros__parameters:
+      command_interfaces:
+        - position
+      state_interfaces:
+        - position
+        - velocity
+      joints:
+        - fr3_finger_joint1

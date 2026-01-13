@@ -109,6 +109,5 @@ RUN sudo chmod +x /franka_entrypoint.sh
 
 # Set the default shell to bash and the workdir to the source directory
 SHELL [ "/bin/bash", "-c" ]
-ENTRYPOINT [ "/franka_entrypoint.sh" ]
 CMD [ "/bin/bash" ]
 WORKDIR /ros2_ws
