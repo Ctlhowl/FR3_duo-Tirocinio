@@ -1,6 +1,5 @@
 .env
 .idea
-.vscode
 *.pyc
 COLCON_IGNORE
 AMENT_IGNORE
