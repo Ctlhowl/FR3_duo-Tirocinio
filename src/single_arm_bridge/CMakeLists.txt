@@ -9,8 +9,10 @@ endif()
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(sensor_msgs REQUIRED)
+find_package(moveit_ros_planning_interface REQUIRED)
 
 add_executable(mimic_node src/mimic_node.cpp)
+add_executable(add_collision_object src/add_collision_object.cpp)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
@@ -25,9 +27,11 @@ if(BUILD_TESTING)
 endif()
 
 ament_target_dependencies(mimic_node rclcpp sensor_msgs)
+ament_target_dependencies(add_collision_object rclcpp moveit_ros_planning_interface)
 
 install(TARGETS
   mimic_node
+  add_collision_object
   DESTINATION lib/${PROJECT_NAME})
 
 ament_package()

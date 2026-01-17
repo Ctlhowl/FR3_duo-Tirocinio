@@ -1,5 +1,5 @@
 # Start with an official ROS 2 base image for the desired distribution
-FROM ros:humble-ros-base
+FROM osrf/ros:humble-desktop-full
 
 # Set environment variables
 ENV DEBIAN_FRONTEND=noninteractive \
@@ -15,17 +15,14 @@ ARG USERNAME=ctlfab_ros2
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         bash-completion \
-        curl \
-        gdb \
-        git \
-        nano \
-        openssh-client \
+        sudo curl git wget nano \
+        build-essential cmake \
         python3-colcon-argcomplete \
         python3-colcon-common-extensions \
+        python3-flake8 \
+        python3-rosdep \
+        python3-setuptools \
         python3-vcstool \
-        sudo \
-        vim \
-        wget \
         libx11-6 libxcb1 libxau6 libgl1-mesa-dev xvfb dbus-x11 x11-utils libxkbcommon-x11-0 xsltproc\
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
@@ -58,39 +55,23 @@ ENV LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${COPPELIASIM_ROOT_DIR}
 # Install ROS 2 dependencies
 RUN sudo apt-get update \
     && sudo apt-get install -y --no-install-recommends \
+        ros-humble-moveit \
+        ros-humble-rmw-cyclonedds-cpp \
+        ros-humble-joint-trajectory-controller \
+        ros-humble-ros2-control \
+        ros-humble-ros2-controllers \
         ros-humble-ros-gz \
-        ros-humble-sdformat-urdf \
-        ros-humble-joint-state-publisher-gui \
-        ros-humble-ros2controlcli \
-        ros-humble-controller-interface \
-        ros-humble-hardware-interface-testing \
+        ros-humble-xacro \
         ros-humble-ament-cmake-clang-format \
-        ros-humble-ament-cmake-clang-tidy \
-        ros-humble-controller-manager \
-        ros-humble-ros2-control-test-assets \
         libignition-gazebo6-dev \
         libignition-plugin-dev \
-        ros-humble-hardware-interface \
-        ros-humble-control-msgs \
-        ros-humble-backward-ros \
-        ros-humble-generate-parameter-library \
-        ros-humble-realtime-tools \
-        ros-humble-joint-state-publisher \
-        ros-humble-joint-state-broadcaster \
-        ros-humble-moveit-ros-move-group \
-        ros-humble-moveit-kinematics \
-        ros-humble-moveit-planners-ompl \
-        ros-humble-moveit-ros-visualization \
-        ros-humble-joint-trajectory-controller \
-        ros-humble-moveit-simple-controller-manager \
-        ros-humble-rviz2 \
-        ros-humble-xacro \
-        ros-humble-example-interfaces \
     && sudo apt-get clean \
     && sudo rm -rf /var/lib/apt/lists/*
 
+RUN RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+
 WORKDIR /ros2_ws
-COPY franka.repos /ros2_ws/src/franka_ros2/franka.repos
+COPY ./src/franka_ros2/franka.repos /ros2_ws/src/franka_ros2/franka.repos
 
 RUN sudo chown -R $USERNAME:$USERNAME /ros2_ws \
     && vcs import src/franka_ros2 < src/franka_ros2/franka.repos --recursive --skip-existing \
@@ -103,9 +84,6 @@ RUN sudo chown -R $USERNAME:$USERNAME /ros2_ws \
 RUN rm -rf /home/$USERNAME/.ros \
     && rm -rf src \
     && mkdir -p src
-
-COPY ./franka_entrypoint.sh /franka_entrypoint.sh
-RUN sudo chmod +x /franka_entrypoint.sh
 
 # Set the default shell to bash and the workdir to the source directory
 SHELL [ "/bin/bash", "-c" ]
