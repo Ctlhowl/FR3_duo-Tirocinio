@@ -31,8 +31,7 @@
 #include <franka_gripper/gripper_action_server.hpp>
 
 namespace franka_gripper {
-GripperActionServer::GripperActionServer(const rclcpp::NodeOptions& options)
-    : Node("franka_gripper_node", options) {
+GripperActionServer::GripperActionServer(const rclcpp::NodeOptions& options) : Node("franka_gripper_node", options) {
   this->declare_parameter("robot_ip", std::string());
   this->declare_parameter("default_grasp_epsilon.inner", k_default_grasp_epsilon);
   this->declare_parameter("default_grasp_epsilon.outer", k_default_grasp_epsilon);
@@ -41,6 +40,7 @@ GripperActionServer::GripperActionServer(const rclcpp::NodeOptions& options)
   this->declare_parameter("state_publish_rate", k_default_state_publish_rate);
   this->declare_parameter("feedback_publish_rate", k_default_feedback_publish_rate);
   std::string robot_ip;
+
   if (!this->get_parameter<std::string>("robot_ip", robot_ip)) {
     RCLCPP_FATAL(this->get_logger(), "Parameter 'robot_ip' not set");
     throw std::invalid_argument("Parameter 'robot_ip' not set");
@@ -61,10 +61,8 @@ GripperActionServer::GripperActionServer(const rclcpp::NodeOptions& options)
     throw std::invalid_argument("Parameter 'joint_names' has wrong number of arguments");
   }
 
-  const double kStatePublishRate =
-      static_cast<double>(this->get_parameter("state_publish_rate").as_int());
-  const double kFeedbackPublishRate =
-      static_cast<double>(this->get_parameter("feedback_publish_rate").as_int());
+  const double kStatePublishRate = static_cast<double>(this->get_parameter("state_publish_rate").as_int());
+  const double kFeedbackPublishRate = static_cast<double>(this->get_parameter("feedback_publish_rate").as_int());
   this->future_wait_timeout_ = rclcpp::WallRate(kFeedbackPublishRate).period();
 
   RCLCPP_INFO(this->get_logger(), "Trying to establish a connection with the gripper");
@@ -75,6 +73,7 @@ GripperActionServer::GripperActionServer(const rclcpp::NodeOptions& options)
     throw exception;
   }
   RCLCPP_INFO(this->get_logger(), "Connected to gripper");
+
   current_gripper_state_ = gripper_->readOnce();
   const auto kHomingTask = Task::kHoming;
   this->stop_service_ =  // NOLINTNEXTLINE
@@ -123,8 +122,7 @@ GripperActionServer::GripperActionServer(const rclcpp::NodeOptions& options)
             .detach();
       });
 
-  this->joint_states_publisher_ =
-      this->create_publisher<sensor_msgs::msg::JointState>("~/joint_states", 1);
+  this->joint_states_publisher_ = this->create_publisher<sensor_msgs::msg::JointState>("~/joint_states", 1);
   this->timer_ = this->create_wall_timer(rclcpp::WallRate(kStatePublishRate).period(),
                                          [this]() { return publishGripperState(); });
 }
@@ -161,8 +159,7 @@ void GripperActionServer::executeGrasp(const std::shared_ptr<GoalHandleGrasp>& g
   executeCommand(goal_handle, Task::kGrasp, command);
 }
 
-void GripperActionServer::onExecuteGripperCommand(
-    const std::shared_ptr<GoalHandleGripperCommand>& goal_handle) {
+void GripperActionServer::onExecuteGripperCommand(const std::shared_ptr<GoalHandleGripperCommand>& goal_handle) {
   const auto kGoal = goal_handle->get_goal();
   const double kTargetWidth = 2 * kGoal->command.position;
 
@@ -170,13 +167,15 @@ void GripperActionServer::onExecuteGripperCommand(
   constexpr double kSamePositionThreshold = 1e-4;
   auto result = std::make_shared<control_msgs::action::GripperCommand::Result>();
   const double kCurrentWidth = current_gripper_state_.width;
+  
   if (kTargetWidth > current_gripper_state_.max_width || kTargetWidth < 0) {
     RCLCPP_ERROR(this->get_logger(),
-                 "GripperServer: Commanding out of range width! max_width = %f command = %f",
+                "GripperServer: Commanding out of range width! max_width = %f command = %f",
                  current_gripper_state_.max_width, kTargetWidth);
     goal_handle->abort(result);
     return;
   }
+
   if (std::abs(kTargetWidth - kCurrentWidth) < kSamePositionThreshold) {
     result->effort = 0;
     result->position = kCurrentWidth;
@@ -185,21 +184,21 @@ void GripperActionServer::onExecuteGripperCommand(
     goal_handle->succeed(result);
     return;
   }
+
   guard.unlock();
   auto command = [kTargetWidth, kCurrentWidth, kGoal, this]() {
     if (kTargetWidth >= kCurrentWidth) {
       return gripper_->move(kTargetWidth, default_speed_);
     }
-    return gripper_->grasp(kTargetWidth, default_speed_, kGoal->command.max_effort,
-                           default_epsilon_inner_, default_epsilon_outer_);
+    return gripper_->grasp(kTargetWidth, default_speed_, kGoal->command.max_effort, default_epsilon_inner_, default_epsilon_outer_);
   };
 
   executeGripperCommand(goal_handle, command);
 }
 
-void GripperActionServer::executeGripperCommand(
-    const std::shared_ptr<GoalHandleGripperCommand>& goal_handle,
-    const std::function<bool()>& command_handler) {
+void GripperActionServer::executeGripperCommand(const std::shared_ptr<GoalHandleGripperCommand>& goal_handle, 
+                                                const std::function<bool()>& command_handler) {
+                                                  
   const auto kTaskName = getTaskName(Task::kGripperCommand);
   RCLCPP_INFO(this->get_logger(), "Gripper %s...", kTaskName.c_str());
 
