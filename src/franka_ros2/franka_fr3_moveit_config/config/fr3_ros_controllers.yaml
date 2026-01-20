@@ -53,11 +53,9 @@
   fr3_hand_controller:
     ros__parameters:
       command_interfaces:
-        - effort
         - position
         - velocity
       state_interfaces:
-        - effort
         - position
         - velocity
       joint: fr3_finger_joint1
