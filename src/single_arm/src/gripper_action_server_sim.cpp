@@ -1,26 +1,34 @@
-#include <functional>
-#include <future>
-#include <memory>
-#include <string>
-#include <thread>
-
-#include <rclcpp/rclcpp.hpp>
-#include <rclcpp_action/rclcpp_action.hpp>
-
-#include <control_msgs/action/gripper_command.hpp>
-#include <sensor_msgs/msg/joint_state.hpp>
-#include <std_srvs/srv/trigger.hpp>
-
 #include <single_arm/gripper_action_server_sim.hpp>
 
 namespace single_arm {
 
-  GripperActionServerSim::GripperActionServerSim() : rclcpp::Node("franka_gripper_node") {
-    // Creazione Action Server per ogni task
-    this->stop_service_ = create_service<Trigger>("~/stop",
-        [this](std::shared_ptr<Trigger::Request>,
-        std::shared_ptr<Trigger::Response> response) { return stopServiceCallback(std::move(response)); });
+GripperActionServerSim::GripperActionServerSim() : Node("franka_gripper_node") {
+    // Inizializzazione stati e nomi giunti
+    joint_names_ = {"fr3_finger_joint1", "fr3_finger_joint2"};
+    current_gripper_state_.max_width = max_gripper_width_;
+    current_gripper_state_.width = max_gripper_width_;
 
+    // Sottoscrizione allo stato reale da Coppelia 
+    coppelia_sub_ = this->create_subscription<sensor_msgs::msg::JointState>(
+        "/sim/franka/gripper/joint_states", 10, 
+        std::bind(&GripperActionServerSim::onCoppeliaJointState, this, std::placeholders::_1));
+
+    // Publisher verso Coppelia
+    coppelia_pub_ = this->create_publisher<sensor_msgs::msg::JointState>("/sim/franka/gripper/joint_commands", 10);
+    
+    // Publisher ROS standard per lo stato del gripper
+    joint_states_publisher_ = this->create_publisher<sensor_msgs::msg::JointState>("/joint_states", 10);
+    timer_ = this->create_wall_timer(std::chrono::milliseconds(33), std::bind(&GripperActionServerSim::publishGripperState, this));
+
+    // Services
+     this->stop_service_ = create_service<Trigger>(
+        "~/stop", 
+        [this](std::shared_ptr<Trigger::Request>,
+        std::shared_ptr<Trigger::Response> response) { 
+          return stopServiceCallback(std::move(response)); 
+        });
+
+    // Action Servers
     const auto simHomingTask = SimTask::simHoming;
     this->homing_server_ = rclcpp_action::create_server<Homing>(
         this, "~/homing",
@@ -54,169 +62,130 @@ namespace single_arm {
         [this, simGripperCommandTask](auto, auto) { return handleGoal(simGripperCommandTask); },
         [this, simGripperCommandTask](const auto&) { return handleCancel(simGripperCommandTask); },
         [this](const auto& goal_handle) {
-          return std::thread{[goal_handle, this]() { executeGripperCommand(goal_handle); }}
-              .detach();
+          return std::thread{[goal_handle, this]() { onExecuteGripperCommand(goal_handle); }}.detach();
         });
+    RCLCPP_INFO(this->get_logger(), "[INFO - SIMULAZIONE]: Gripper Action Server pronto.");
+}
 
-    // Comunicazione con CoppeliaSim
-    this->coppelia_pub_ = this->create_publisher<sensor_msgs::msg::JointState>("/franka/gripper/joint_commands", 10);
-    this->feedback_sub_ = this->create_subscription<sensor_msgs::msg::JointState>(
-      "/franka/joint_states", 10,
-      std::bind(&GripperActionServerSim::feedback_callback, this, std::placeholders::_1));
-
-    RCLCPP_INFO(this->get_logger(), "[INFO]: Gripper Action Server (Simulazione) avviato.");
-  }
-
-  rclcpp_action::CancelResponse GripperActionServerSim::handleCancel(SimTask task) {
-    RCLCPP_INFO(this->get_logger(), "[INFO - SIMULAZIONE]: Ricevuta richiesta di annullamento per %s", getTaskName(task).c_str());
-    return rclcpp_action::CancelResponse::ACCEPT;
-  }
-
-  rclcpp_action::GoalResponse GripperActionServerSim::handleGoal(SimTask task) {
-    RCLCPP_INFO(this->get_logger(), "[INFO - SIMULAZIONE]: Ricevuta richiesta per %s", getTaskName(task).c_str());
-    return rclcpp_action::GoalResponse::ACCEPT_AND_EXECUTE;
-  }
-
-  void GripperActionServerSim::stopServiceCallback(const std::shared_ptr<Trigger::Response>& response) {
-    RCLCPP_INFO(this->get_logger(), "[INFO - SIMULAZIONE]: Stop richiesto.");
-
-    double current_pos_to_halt;
-    {
-      std::lock_guard<std::mutex> lock(state_mutex_);
-      current_pos_to_halt = current_width_;
+std::string GripperActionServerSim::getTaskName(SimTask task) {
+    switch (task) {
+        case SimTask::simHoming: return "Homing";
+        case SimTask::simMove: return "Move";
+        case SimTask::simGrasp: return "Grasp";
+        case SimTask::simGripperCommand: return "GripperCommand";
+        default: return "Unknown";
     }
+}
 
-    sensor_msgs::msg::JointState stop_cmd;
-    stop_cmd.name = {"fr3_finger_joint1", "fr3_finger_joint2"};
-    stop_cmd.position = {current_pos_to_halt, current_pos_to_halt};
-    coppelia_pub_->publish(stop_cmd);
+void GripperActionServerSim::onCoppeliaJointState(const sensor_msgs::msg::JointState::SharedPtr msg) {
+    std::lock_guard<std::mutex> lock(gripper_sim_state_mutex_);
+    if (msg->position.size() >= 2) {
+        current_gripper_state_.width = msg->position[0] + msg->position[1];
+    }
+}
 
-    response->success = true;
-    response->message = "Simulazione gripper fermata con successo.";
+void GripperActionServerSim::sendToCoppelia(double target_width) {
+    sensor_msgs::msg::JointState msg;
+    msg.header.stamp = this->now();
+    msg.name = joint_names_;
+    msg.position.push_back(target_width / 2.0);
+    msg.position.push_back(target_width / 2.0);
+    coppelia_pub_->publish(msg);
+}
 
-    RCLCPP_INFO(this->get_logger(), "[INFO - SIMULAZIONE]: Movimento interrotto alla posizione: %f", current_pos_to_halt);
-  }
+// --- Implementazione Action Logic ---
+void GripperActionServerSim::executeHoming(const std::shared_ptr<GoalHandleHoming>& goal_handle) {
+    auto cmd = [this, goal_handle]() {
+        sendToCoppelia(max_gripper_width_);
+        return waitForTarget(max_gripper_width_, goal_handle);
+    };
 
-  void GripperActionServerSim::executeHoming(const std::shared_ptr<GoalHandleHoming>& goal_handle) {
-    RCLCPP_INFO(this->get_logger(), "[INFO - SIMULAZIONE]: Avvio Homing...");
-    const double target_pos = 0.04;
+    executeCommand(goal_handle, SimTask::simHoming, cmd);
+}
+
+void GripperActionServerSim::executeMove(const std::shared_ptr<GoalHandleMove>& goal_handle) {
+    double target = goal_handle->get_goal()->width;
+
+    auto cmd = [this, target, goal_handle]() {
+        sendToCoppelia(target);
+        return waitForTarget(target, goal_handle);
+    };
     
-    sensor_msgs::msg::JointState cmd;
-    cmd.name = {"fr3_finger_joint1", "fr3_finger_joint2"};
-    cmd.position = {target_pos, target_pos};
-    coppelia_pub_->publish(cmd);
+    executeCommand(goal_handle, SimTask::simMove, cmd);
+}
 
-    auto result = std::make_shared<Homing::Result>();
-    if (waitForTarget(target_pos, goal_handle)) {
-        result->success = true;
-        goal_handle->succeed(result);
-        RCLCPP_INFO(this->get_logger(), "[INFO - SIMULAZIONE]: Homing completato.");
-    } else {
-        result->success = false;
-        goal_handle->abort(result);
-    }
-  }
+void GripperActionServerSim::executeGrasp(const std::shared_ptr<GoalHandleGrasp>& goal_handle) {
+    double target = goal_handle->get_goal()->width;
+    
+    auto cmd = [this, target, goal_handle]() {
+        sendToCoppelia(target);
+        // In simulazione considero il Grasp come un Move; in un sistema reale
+        // si fermerebbe al contatto misurando l'effort.
+        return waitForTarget(target, goal_handle);
+    };
+    
+    executeCommand(goal_handle, SimTask::simGrasp, cmd);
+}
 
-  void GripperActionServerSim::executeMove(const std::shared_ptr<GoalHandleMove>& goal_handle) {
+void GripperActionServerSim::onExecuteGripperCommand(const std::shared_ptr<GoalHandleGripperCommand>& goal_handle) {
     const auto goal = goal_handle->get_goal();
-    const double target_pos = goal->width / 2.0;
 
-    if( target_pos != current_width_ ){
-      RCLCPP_INFO(this->get_logger(), "[INFO - SIMULAZIONE]: Muovo a larghezza %.3f", goal->width);
+    // Per GripperCommand, la position nel goal è quella di un singolo dito
+    double targetWidth = 2.0 * goal->command.position;
 
-      sensor_msgs::msg::JointState cmd;
-      cmd.name = {"fr3_finger_joint1", "fr3_finger_joint2"};
-      cmd.position = {target_pos, target_pos};
-      coppelia_pub_->publish(cmd);
-
-      auto result = std::make_shared<Move::Result>();
-      if (waitForTarget(target_pos, goal_handle)) {
-          result->success = true;
-          goal_handle->succeed(result);
-      } else {
-          result->success = false;
-          goal_handle->abort(result);
-      }
-    }
-  }
-
-  void GripperActionServerSim::executeGrasp(const std::shared_ptr<GoalHandleGrasp>& goal_handle) {
-    const auto goal = goal_handle->get_goal();
-    const double target_pos = goal->width / 2.0;
-
-    RCLCPP_INFO(this->get_logger(), "[INFO - SIMULAZIONE]: Grasp a larghezza %.3f con forza %.1f N", goal->width, goal->force);
-
-    sensor_msgs::msg::JointState cmd;
-    cmd.name = {"fr3_finger_joint1", "fr3_finger_joint2"};
-    cmd.position = {target_pos, target_pos};
-    coppelia_pub_->publish(cmd);
-
-    auto result = std::make_shared<Grasp::Result>();
-    if (waitForTarget(target_pos, goal_handle)) {
-        result->success = true;
-        goal_handle->succeed(result);
-    } else {
-        result->success = false;
-        goal_handle->abort(result);
-    }
-  }
-
-  void GripperActionServerSim::executeGripperCommand(const std::shared_ptr<GoalHandleGripperCommand>& goal_handle) {
-    const auto goal = goal_handle->get_goal();
-    const double target_pos =  2 * goal->command.position;
-
-    RCLCPP_INFO(this->get_logger(), "[INFO - SIMULAZIONE]: Gripper Command posizione %.3f", goal->command.position);
-
-    sensor_msgs::msg::JointState cmd;
-    cmd.name = {"fr3_finger_joint1", "fr3_finger_joint2"};
-    cmd.position = {target_pos, target_pos};
-    coppelia_pub_->publish(cmd);
+    sendToCoppelia(targetWidth);
 
     auto result = std::make_shared<GripperCommand::Result>();
-    if (waitForTarget(target_pos / 2, goal_handle)) {
-      {
-        std::lock_guard<std::mutex> lock(state_mutex_);
-        result->effort = 0.0;
-        result->position = current_width_;
-        result->reached_goal = true;
-        result->stalled = false;
-        
-        goal_handle->succeed(result);
-      }
-      
-      RCLCPP_INFO(this->get_logger(), "[INFO - SIMULAZIONE]: Gripper Command completato con successo.");
-    } 
-    else {
-      {
-        std::lock_guard<std::mutex> lock(state_mutex_);
-        result->position = current_width_;
-        result->reached_goal = false;
-      }
+    bool success = waitForTarget(targetWidth, goal_handle);
 
-      if (goal_handle->is_canceling()) {
-        goal_handle->canceled(result);
-        RCLCPP_INFO(this->get_logger(), "[INFO - SIMULAZIONE]: Gripper Command annullato.");
-      } else {
-        goal_handle->abort(result);
-        RCLCPP_ERROR(this->get_logger(), "[ERROR - SIMULAZIONE]: Gripper Command fallito per timeout o errore simulazione.");
-      }
+    {
+        std::lock_guard<std::mutex> lock(gripper_sim_state_mutex_);
+        result->position = current_gripper_state_.width;
+        result->reached_goal = success;
     }
-  }
 
-  void GripperActionServerSim::feedback_callback(const sensor_msgs::msg::JointState::SharedPtr msg) {
-    std::lock_guard<std::mutex> lock(state_mutex_);
-    const std::string joint_name = "fr3_finger_joint1"; //
-    auto it = std::find(msg->name.begin(), msg->name.end(), joint_name);
-    if (it != msg->name.end()) {
-      size_t index = std::distance(msg->name.begin(), it);
-      current_width_ = msg->position[index];
-    }
-  }
-}  // namespace single_arm
+    if (success) goal_handle->succeed(result);
+    else goal_handle->abort(result);
+}
+
+// --- Helper & Callbacks ---
+void GripperActionServerSim::publishGripperState() {
+    std::lock_guard<std::mutex> lock(gripper_sim_state_mutex_);
+    sensor_msgs::msg::JointState joint_states;
+    joint_states.header.stamp = this->now();
+    joint_states.name.push_back(this->joint_names_[0]);
+    joint_states.name.push_back(this->joint_names_[1]);
+    joint_states.position.push_back(current_gripper_state_.width / 2);
+    joint_states.position.push_back(current_gripper_state_.width / 2);
+    joint_states.velocity.push_back(0.0);
+    joint_states.velocity.push_back(0.0);
+    joint_states.effort.push_back(0.0);
+    joint_states.effort.push_back(0.0);
+    //joint_states_publisher_->publish(joint_states);
+}
+
+void GripperActionServerSim::stopServiceCallback(const std::shared_ptr<Trigger::Response>& response) {
+    std::lock_guard<std::mutex> lock(gripper_sim_state_mutex_);
+    sendToCoppelia(current_gripper_state_.width);
+    response->success = true;
+    response->message = "Gripper fermato in posizione corrente.";
+}
+
+rclcpp_action::CancelResponse GripperActionServerSim::handleCancel(SimTask task) {
+    RCLCPP_INFO(this->get_logger(), "Cancellazione %s", getTaskName(task).c_str());
+    return rclcpp_action::CancelResponse::ACCEPT;
+}
+
+rclcpp_action::GoalResponse GripperActionServerSim::handleGoal(SimTask task) {
+    RCLCPP_INFO(this->get_logger(), "Ricevuto goal %s", getTaskName(task).c_str());
+    return rclcpp_action::GoalResponse::ACCEPT_AND_EXECUTE;
+}
+
+} // namespace single_arm
 
 int main(int argc, char ** argv) {
     rclcpp::init(argc, argv);
     rclcpp::spin(std::make_shared<single_arm::GripperActionServerSim>());
     rclcpp::shutdown();
     return 0;
-  }
+}

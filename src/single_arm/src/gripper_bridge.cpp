@@ -47,6 +47,8 @@ namespace single_arm {
       return;
     }
 
+    /*
+
     if (this->gripper_command_action_client_->wait_for_action_server(std::chrono::seconds(1))) {
         auto goal_msg = GripperCommand::Goal();
         goal_msg.command.position = target_position;
@@ -58,7 +60,8 @@ namespace single_arm {
         return;
       }
 
-    /*
+    */
+   
     // Logica per HOMING
     if (target_position >= 0.039) {
       if (this->gripper_homing_action_client_->wait_for_action_server(std::chrono::seconds(1))) {
@@ -98,7 +101,7 @@ namespace single_arm {
       this->gripper_move_action_client_->async_send_goal(goal_msg);
       last_position_ = target_position;
     }
-    */    
+        
   }
 
   void GripperBridge::call_stop_service() {

@@ -29,6 +29,11 @@ cd /opt/coppelia
 ./coppeliaSim.sh
 ```
 
+In caso di errore `X11 connection` eseguire:
+```bash
+xhost +local:root
+```
+
 ### Avviare Moveit
 ```bash
 cd /ros2_ws
