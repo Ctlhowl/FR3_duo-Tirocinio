@@ -60,7 +60,8 @@ RUN sudo apt-get update \
         ros-humble-joint-trajectory-controller \
         ros-humble-ros2-control \
         ros-humble-ros2-controllers \
-        ros-humble-ros-gz \
+        ros-humble-franka-msgs \
+        ros-humble-topic-based-ros2-control \
         ros-humble-xacro \
         ros-humble-ament-cmake-clang-format \
         libignition-gazebo6-dev \

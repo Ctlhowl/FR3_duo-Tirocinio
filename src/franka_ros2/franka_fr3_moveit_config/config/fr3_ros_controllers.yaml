@@ -3,17 +3,21 @@
     ros__parameters:
       update_rate: 1000  # Hz
 
-      fr3_arm_controller:
-        type: joint_trajectory_controller/JointTrajectoryController
-
+      # Pubblica lo stato di tutti i giunti (braccio + gripper) - Simulazione
       joint_state_broadcaster:
         type: joint_state_broadcaster/JointStateBroadcaster
 
-      franka_robot_state_broadcaster:
-        type: franka_robot_state_broadcaster/FrankaRobotStateBroadcaster
-      
+      # Controller per il movimento del braccio (Joint 1-7)
+      fr3_arm_controller:
+        type: joint_trajectory_controller/JointTrajectoryController
+
+      # Controller per le dita del gripper
       fr3_hand_controller:
         type: position_controllers/GripperActionController
+
+      # Pubblica lo stato di tutti i giunti (braccio + gripper) - Reale
+      franka_robot_state_broadcaster:
+        type: franka_robot_state_broadcaster/FrankaRobotStateBroadcaster
 
 /**:
   franka_robot_state_broadcaster:
@@ -28,7 +32,6 @@
     ros__parameters:
       command_interfaces:
         - position
-        - velocity
       state_interfaces:
         - position
         - velocity
@@ -56,5 +59,6 @@
         - position
       state_interfaces:
         - position
+        - velocity
       joint: fr3_finger_joint1
   

@@ -6,36 +6,60 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 endif()
 
 find_package(ament_cmake REQUIRED)
+find_package(ament_index_cpp REQUIRED)
+find_package(controller_interface REQUIRED)
 find_package(franka_msgs REQUIRED)
+find_package(hardware_interface REQUIRED)
+find_package(moveit_core REQUIRED)
+find_package(moveit_msgs REQUIRED)
+find_package(pinocchio REQUIRED)
+find_package(pluginlib REQUIRED)
 find_package(rclcpp REQUIRED)
-find_package(rclcpp_action REQUIRED)
+find_package(rclcpp_lifecycle REQUIRED)
 find_package(std_srvs REQUIRED)
-find_package(sensor_msgs REQUIRED)
-find_package(control_msgs REQUIRED)
+find_package(Eigen3 REQUIRED)
 
-add_executable(mimic_node src/mimic_node.cpp)
-add_executable(gripper_bridge src/gripper_bridge.cpp)
-add_executable(gripper_action_server_sim src/gripper_action_server_sim.cpp)
 
-foreach(target gripper_bridge gripper_action_server_sim)
-  target_include_directories(${target} PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-    $<INSTALL_INTERFACE:include>
-  )
-endforeach()
+add_library(
+        ${PROJECT_NAME}
+        SHARED
+        src/gripper_bridge_controller.cpp
+)
 
-ament_target_dependencies(mimic_node rclcpp sensor_msgs)
-ament_target_dependencies(gripper_bridge rclcpp rclcpp_action sensor_msgs control_msgs std_srvs franka_msgs)
-ament_target_dependencies(gripper_action_server_sim rclcpp rclcpp_action sensor_msgs control_msgs std_srvs franka_msgs)
+target_include_directories(
+        ${PROJECT_NAME}
+        PUBLIC
+        include
+        ${EIGEN3_INCLUDE_DIRS}
+)
 
-install(TARGETS
-  mimic_node
-  gripper_bridge
-  gripper_action_server_sim
-  DESTINATION lib/${PROJECT_NAME})
+ament_target_dependencies(
+        ${PROJECT_NAME}
+        controller_interface
+        franka_msgs
+        hardware_interface
+        moveit_core
+        moveit_msgs
+        pinocchio
+        pluginlib
+        rclcpp
+        rclcpp_lifecycle
+        std_srvs
+)
 
-install(DIRECTORY include/
-  DESTINATION include
+pluginlib_export_plugin_description_file(controller_interface single_arm.xml)
+
+install(
+        TARGETS
+        ${PROJECT_NAME}
+        RUNTIME DESTINATION bin
+        ARCHIVE DESTINATION lib
+        LIBRARY DESTINATION lib
+)
+
+install(
+        DIRECTORY include/
+        DESTINATION include
 )
 
 ament_package()
