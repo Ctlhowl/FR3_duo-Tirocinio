@@ -51,7 +51,7 @@ def generate_robot_nodes(context):
     nodes.append(
         Node(
             package='franka_gripper',
-            executable='fake_gripper_state_publisher.py',
+            executable='franka_gripper_sim_node',
             name=['franka_gripper'],
             namespace=namespace,
             parameters=[{'robot_ip': robot_ip, 'joint_names': joint_names}, gripper_config],

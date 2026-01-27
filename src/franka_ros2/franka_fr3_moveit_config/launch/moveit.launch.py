@@ -198,7 +198,7 @@ def generate_launch_description():
 
     # Load controllers
     load_controllers = []
-    for controller in ['fr3_arm_controller', 'fr3_hand_controller']:
+    for controller in ['fr3_arm_controller']:
         load_controllers.append(
             ExecuteProcess(
                 cmd=[
@@ -217,7 +217,11 @@ def generate_launch_description():
         name='joint_state_publisher',
         namespace=namespace,
         parameters=[
-            {'source_list': ['franka/joint_states', 'fr3_gripper/joint_states'], 'rate': 30}],
+            {'source_list': [
+                'franka/joint_states',             # Stato del braccio da ros2_control
+                'franka_gripper/joint_states' # Stato del gripper dal bridge simulato
+            ], 'rate': 30}],
+        remappings=[('joint_states', '/joint_states')],
     )
 
     # Spawner condizionale per lo stato dei giunti
@@ -273,7 +277,6 @@ def generate_launch_description():
             launch_arguments={'robot_ip': robot_ip,
                               use_sim_parameter_name: use_sim,
                               'namespace': namespace}.items(),
-            condition=UnlessCondition(use_sim)
     )
     return LaunchDescription(
         [robot_arg,

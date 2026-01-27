@@ -1,9 +1,0 @@
-<library path="single_arm">
-    <class name="single_arm/GripperBridgeController"
-         type="single_arm::GripperBridgeController"
-         base_class_type="controller_interface::ControllerInterface">
-        <description>
-        Controller Bridge che smista i comandi di MoveIt 2 verso le azioni Franka/Coppelia.
-        </description>
-    </class>
-</library>

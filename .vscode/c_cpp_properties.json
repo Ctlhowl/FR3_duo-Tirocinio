@@ -7,7 +7,8 @@
                 "/opt/ros/humble/include",
                 "/opt/ros/humble/include/**",
                 "/usr/include/eigen3",
-                "${workspaceFolder}/src/single_arm/include"
+                "${workspaceFolder}/src/single_arm/include",
+                "${workspaceFolder}/src/franka_gripper_sim/include"
             ],
             "defines": [],
             "compilerPath": "/usr/bin/gcc",
