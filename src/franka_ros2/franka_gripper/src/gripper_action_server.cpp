@@ -19,7 +19,6 @@
 #include <thread>
 
 #include <franka/exception.h>
-#include <franka/gripper.h>
 #include <franka/gripper_state.h>
 #include <control_msgs/action/gripper_command.hpp>
 #include <rclcpp/rclcpp.hpp>
@@ -30,8 +29,12 @@
 
 #include <franka_gripper/gripper_action_server.hpp>
 
+#include <franka_gripper/hardware_gripper.hpp>
+#include <franka_gripper/simulated_gripper.hpp>
+
 namespace franka_gripper {
 GripperActionServer::GripperActionServer(const rclcpp::NodeOptions& options) : Node("franka_gripper_node", options) {
+  this->declare_parameter("use_sim", false);
   this->declare_parameter("robot_ip", std::string());
   this->declare_parameter("default_grasp_epsilon.inner", k_default_grasp_epsilon);
   this->declare_parameter("default_grasp_epsilon.outer", k_default_grasp_epsilon);
@@ -41,11 +44,12 @@ GripperActionServer::GripperActionServer(const rclcpp::NodeOptions& options) : N
   this->declare_parameter("feedback_publish_rate", k_default_feedback_publish_rate);
   std::string robot_ip;
 
-  if (!this->get_parameter<std::string>("robot_ip", robot_ip)) {
+   if (!this->get_parameter<std::string>("robot_ip", robot_ip)) {
     RCLCPP_FATAL(this->get_logger(), "Parameter 'robot_ip' not set");
     throw std::invalid_argument("Parameter 'robot_ip' not set");
   }
 
+  // Inizializzazione variabili interne 
   this->default_speed_ = this->get_parameter("default_speed").as_double();
   this->default_epsilon_inner_ = this->get_parameter("default_grasp_epsilon.inner").as_double();
   this->default_epsilon_outer_ = this->get_parameter("default_grasp_epsilon.outer").as_double();
@@ -66,15 +70,25 @@ GripperActionServer::GripperActionServer(const rclcpp::NodeOptions& options) : N
   this->future_wait_timeout_ = rclcpp::WallRate(kFeedbackPublishRate).period();
 
   RCLCPP_INFO(this->get_logger(), "Trying to establish a connection with the gripper");
-  try {
-    this->gripper_ = std::make_unique<franka::Gripper>(robot_ip);
-  } catch (const franka::Exception& exception) {
-    RCLCPP_FATAL(this->get_logger(), exception.what());
-    throw exception;
+
+  bool use_sim = this->get_parameter("use_sim").as_bool();
+  if (use_sim) {
+    RCLCPP_INFO(this->get_logger(), "Running in SIMULATION mode (CoppeliaSim)");
+    gripper_ = std::make_unique<SimulatedGripper>(this);
+  } else {
+    try {
+      RCLCPP_INFO(this->get_logger(), "Connecting to REAL hardware at %s", robot_ip.c_str());
+      gripper_ = std::make_unique<HardwareGripper>(robot_ip);
+    } catch (const franka::Exception& exception) {
+      RCLCPP_FATAL(this->get_logger(), exception.what());
+      throw exception;
+    }
   }
   RCLCPP_INFO(this->get_logger(), "Connected to gripper");
 
   current_gripper_state_ = gripper_->readOnce();
+
+  // Setup Action Servers 
   const auto kHomingTask = Task::kHoming;
   this->stop_service_ =  // NOLINTNEXTLINE
       create_service<Trigger>("~/stop",

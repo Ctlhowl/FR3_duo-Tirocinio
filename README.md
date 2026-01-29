@@ -18,6 +18,8 @@ colcon build --symlink-install --packages-select sim_ros2_interface --cmake-args
 ```bash
 cd /ros2_ws
 vcs import /ros2_ws/src/franka_ros2 < /ros2_ws/src/franka_ros2/franka.repos --recursive --skip-existing
+rosdep update
+rosdep install --from-paths src --ignore-src -r -y
 colcon build --symlink-install
 source install/setup.bash
 ```
@@ -39,5 +41,5 @@ xhost +local:root
 cd /ros2_ws
 colcon build --symlink-install
 source install/setup.bash
-ros2 launch franka_fr3_moveit_config moveit.launch.py arm_id:=fr3 load_gripper:=true use_fake_hardware:=true robot_ip:="localhost"
+ros2 launch franka_fr3_moveit_config moveit.launch.py arm_id:=fr3 load_gripper:=true robot_ip:=none use_sim:=true 
 ```

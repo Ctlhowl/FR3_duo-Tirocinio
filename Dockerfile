@@ -23,6 +23,7 @@ RUN apt-get update && \
         python3-rosdep \
         python3-setuptools \
         python3-vcstool \
+        libboost-system-dev libboost-all-dev \
         libx11-6 libxcb1 libxau6 libgl1-mesa-dev xvfb dbus-x11 x11-utils libxkbcommon-x11-0 xsltproc\
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
@@ -60,11 +61,10 @@ RUN sudo apt-get update \
         ros-humble-joint-trajectory-controller \
         ros-humble-ros2-control \
         ros-humble-ros2-controllers \
-        ros-humble-ros-gz \
+        ros-humble-franka-msgs \
+        ros-humble-topic-based-ros2-control \
         ros-humble-xacro \
         ros-humble-ament-cmake-clang-format \
-        libignition-gazebo6-dev \
-        libignition-plugin-dev \
     && sudo apt-get clean \
     && sudo rm -rf /var/lib/apt/lists/*
 

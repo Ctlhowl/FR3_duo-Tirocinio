@@ -24,9 +24,10 @@ from launch_ros.actions import Node
 
 def generate_robot_nodes(context):
     robot_ip = LaunchConfiguration('robot_ip').perform(context)
-    use_fake_hardware = LaunchConfiguration('use_fake_hardware').perform(context)
     arm_id = LaunchConfiguration('arm_id').perform(context)
     namespace = LaunchConfiguration('namespace').perform(context)
+    use_sim = LaunchConfiguration('use_sim').perform(context)
+
     # Declare the launch argument names
     default_joint_name_postfix = '_finger_joint'
     joint_names_1 = arm_id + default_joint_name_postfix + '1'
@@ -36,9 +37,7 @@ def generate_robot_nodes(context):
     nodes = []
 
     # Load the gripper configuration file
-    gripper_config = os.path.join(
-        get_package_share_directory('franka_gripper'), 'config', 'franka_gripper_node.yaml'
-    )
+    gripper_config = os.path.join(get_package_share_directory('franka_gripper'), 'config', 'franka_gripper_node.yaml')
     nodes.append(
         Node(
                 package='franka_gripper',
@@ -46,17 +45,17 @@ def generate_robot_nodes(context):
                 name=['franka_gripper'],
                 namespace=namespace,
                 parameters=[{'robot_ip': robot_ip, 'joint_names': joint_names}, gripper_config],
-                condition=UnlessCondition(use_fake_hardware),
+                condition=UnlessCondition(use_sim),
         )
     )
     nodes.append(
         Node(
             package='franka_gripper',
-            executable='fake_gripper_state_publisher.py',
+            executable='franka_gripper_node',
             name=['franka_gripper'],
             namespace=namespace,
-            parameters=[{'robot_ip': robot_ip, 'joint_names': joint_names}, gripper_config],
-            condition=IfCondition(use_fake_hardware),
+            parameters=[{'robot_ip': robot_ip, 'joint_names': joint_names, 'use_sim': True}, gripper_config],
+            condition=IfCondition(use_sim),
         )
     )
     return nodes
@@ -68,13 +67,6 @@ def generate_launch_description():
             DeclareLaunchArgument(
                 'robot_ip',
                 description='Hostname or IP address of the robot.'
-            ),
-            DeclareLaunchArgument(
-                'use_fake_hardware',
-                default_value='false',
-                description=(
-                    'Publish fake gripper joint states without connecting to a real gripper'
-                ),
             ),
             DeclareLaunchArgument(
                 'arm_id',
@@ -89,6 +81,13 @@ def generate_launch_description():
                 description=(
                     'Namespace for the gripper nodes. If not set, the nodes will not be '
                     'namespaced.'
+                ),
+            ),
+             DeclareLaunchArgument(
+                'use_sim', 
+                default_value='true',
+                description=(
+                    ' Is the robot being simulated ?'
                 ),
             ),
             OpaqueFunction(function=generate_robot_nodes)

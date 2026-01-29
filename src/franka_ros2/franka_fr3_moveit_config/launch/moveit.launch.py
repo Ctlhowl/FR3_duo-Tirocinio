@@ -25,7 +25,7 @@ from launch.actions import (
     IncludeLaunchDescription,
     Shutdown
 )
-from launch.conditions import UnlessCondition
+from launch.conditions import UnlessCondition, IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import (
     Command,
@@ -53,19 +53,16 @@ def load_yaml(package_name, file_path):
 
 def generate_launch_description():
     robot_ip_parameter_name = 'robot_ip'
-    use_fake_hardware_parameter_name = 'use_fake_hardware'
-    fake_sensor_commands_parameter_name = 'fake_sensor_commands'
     namespace_parameter_name = 'namespace'
     load_gripper_parameter_name = 'load_gripper'
     ee_id_parameter_name = 'ee_id'
+    use_sim_parameter_name = 'use_sim'
 
     robot_ip = LaunchConfiguration(robot_ip_parameter_name)
-    use_fake_hardware = LaunchConfiguration(use_fake_hardware_parameter_name)
-    fake_sensor_commands = LaunchConfiguration(
-        fake_sensor_commands_parameter_name)
     namespace = LaunchConfiguration(namespace_parameter_name)
     load_gripper = LaunchConfiguration(load_gripper_parameter_name)
     ee_id = LaunchConfiguration(ee_id_parameter_name)
+    use_sim = LaunchConfiguration(use_sim_parameter_name)
 
     # Command-line arguments
 
@@ -74,35 +71,28 @@ def generate_launch_description():
     )
 
     # planning_context
-    franka_xacro_file = os.path.join(
-        get_package_share_directory('franka_description'),
-        'robots', 'fr3', 'fr3.urdf.xacro'
-    )
-
+    franka_xacro_file = os.path.join(get_package_share_directory('franka_description'),'robots', 'fr3', 'fr3.urdf.xacro')
     robot_description_config = Command(
-        [FindExecutable(name='xacro'), ' ', franka_xacro_file, ' hand:=', load_gripper,
-         ' robot_ip:=', robot_ip, ' ee_id:=', ee_id, ' use_fake_hardware:=', use_fake_hardware,
-         ' fake_sensor_commands:=', fake_sensor_commands, ' ros2_control:=true'])
+        [FindExecutable(name='xacro'), ' ', 
+            franka_xacro_file, 
+            ' hand:=', load_gripper,
+            ' robot_ip:=', robot_ip, 
+            ' ee_id:=', ee_id, 
+            ' ros2_control:=true',
+            ' use_sim:=', use_sim])
+    robot_description = {'robot_description': ParameterValue(robot_description_config, value_type=str)}
 
-    robot_description = {'robot_description': ParameterValue(
-        robot_description_config, value_type=str)}
 
-    franka_semantic_xacro_file = os.path.join(
-        get_package_share_directory('franka_description'),
-        'robots', 'fr3', 'fr3.srdf.xacro'
-    )
-
+    franka_semantic_xacro_file = os.path.join(get_package_share_directory('franka_description'),'robots', 'fr3', 'fr3.srdf.xacro')
     robot_description_semantic_config = Command(
         [FindExecutable(name='xacro'), ' ',
          franka_semantic_xacro_file, ' hand:=', load_gripper, ' ee_id:=', ee_id]
     )
-
     robot_description_semantic = {'robot_description_semantic': ParameterValue(
         robot_description_semantic_config, value_type=str)}
 
-    kinematics_yaml = load_yaml(
-        'franka_fr3_moveit_config', 'config/kinematics.yaml'
-    )
+
+    kinematics_yaml = load_yaml('franka_fr3_moveit_config', 'config/kinematics.yaml')
 
     # Planning Functionality
     ompl_planning_pipeline_config = {
@@ -117,15 +107,11 @@ def generate_launch_description():
             'start_state_max_bounds_error': 0.1,
         }
     }
-    ompl_planning_yaml = load_yaml(
-        'franka_fr3_moveit_config', 'config/ompl_planning.yaml'
-    )
+    ompl_planning_yaml = load_yaml('franka_fr3_moveit_config', 'config/ompl_planning.yaml')
     ompl_planning_pipeline_config['move_group'].update(ompl_planning_yaml)
 
     # Trajectory Execution Functionality
-    moveit_simple_controllers_yaml = load_yaml(
-        'franka_fr3_moveit_config', 'config/fr3_controllers.yaml'
-    )
+    moveit_simple_controllers_yaml = load_yaml('franka_fr3_moveit_config', 'config/fr3_controllers.yaml')
     moveit_controllers = {
         'moveit_simple_controller_manager': moveit_simple_controllers_yaml,
         'moveit_controller_manager': 'moveit_simple_controller_manager'
@@ -164,8 +150,7 @@ def generate_launch_description():
     )
 
     # RViz
-    rviz_base = os.path.join(get_package_share_directory(
-        'franka_fr3_moveit_config'), 'rviz')
+    rviz_base = os.path.join(get_package_share_directory('franka_fr3_moveit_config'), 'rviz')
     rviz_full_config = os.path.join(rviz_base, 'moveit.rviz')
 
     rviz_node = Node(
@@ -192,11 +177,8 @@ def generate_launch_description():
         parameters=[robot_description],
     )
 
-    ros2_controllers_path = os.path.join(
-        get_package_share_directory('franka_fr3_moveit_config'),
-        'config',
-        'fr3_ros_controllers.yaml',
-    )
+    ros2_controllers_path = os.path.join(get_package_share_directory('franka_fr3_moveit_config'),'config','fr3_ros_controllers.yaml')
+
     ros2_control_node = Node(
         package='controller_manager',
         executable='ros2_control_node',
@@ -212,7 +194,7 @@ def generate_launch_description():
 
     # Load controllers
     load_controllers = []
-    for controller in ['fr3_arm_controller', 'joint_state_broadcaster', 'fr3_hand_controller']:
+    for controller in ['franka_arm',  'joint_state_broadcaster']:
         load_controllers.append(
             ExecuteProcess(
                 cmd=[
@@ -230,8 +212,12 @@ def generate_launch_description():
         executable='joint_state_publisher',
         name='joint_state_publisher',
         namespace=namespace,
+        remappings=[('joint_state_publisher', 'franka/joint_states')],
         parameters=[
-            {'source_list': ['franka/joint_states', 'fr3_gripper/joint_states'], 'rate': 30}],
+            {'source_list': [
+                'franka_arm/joint_states',
+                'franka_gripper/joint_states',
+            ], 'rate': 30}],
     )
 
     franka_robot_state_broadcaster = Node(
@@ -240,7 +226,7 @@ def generate_launch_description():
         namespace=namespace,
         arguments=['franka_robot_state_broadcaster'],
         output='screen',
-        condition=UnlessCondition(use_fake_hardware),
+        condition=UnlessCondition(use_sim), # Solo sul robot reale
     )
 
     robot_arg = DeclareLaunchArgument(
@@ -252,40 +238,39 @@ def generate_launch_description():
         default_value='',
         description='Namespace for the robot.'
     )
+
     load_gripper_arg = DeclareLaunchArgument(
         load_gripper_parameter_name,
         default_value='true',
         description='Whether to load the gripper or not (true or false)'
     )
+
     ee_id_arg = DeclareLaunchArgument(
         ee_id_parameter_name,
         default_value='franka_hand',
-        description='The end-effector id to use. Available options: none, franka_hand, cobot_pump'
+        description='The end-effector id to use. Available options: none, franka_hand'
     )
-    use_fake_hardware_arg = DeclareLaunchArgument(
-        use_fake_hardware_parameter_name,
+
+    use_sim_arg = DeclareLaunchArgument(
+        use_sim_parameter_name,
         default_value='false',
-        description='Use fake hardware')
-    fake_sensor_commands_arg = DeclareLaunchArgument(
-        fake_sensor_commands_parameter_name,
-        default_value='false',
-        description="Fake sensor commands. Only valid when '{}' is true".format(
-            use_fake_hardware_parameter_name))
+        description='Is the robot being simulated?.'
+    )
+
     gripper_launch_file = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([PathJoinSubstitution(
             [FindPackageShare('franka_gripper'), 'launch', 'gripper.launch.py'])]),
-        launch_arguments={'robot_ip': robot_ip,
-                          use_fake_hardware_parameter_name: use_fake_hardware,
-                          'namespace': namespace}.items(),
+            launch_arguments={'robot_ip': robot_ip,
+                              use_sim_parameter_name: use_sim,
+                              'namespace': namespace}.items(),
     )
     return LaunchDescription(
         [robot_arg,
          namespace_arg,
          load_gripper_arg,
          ee_id_arg,
-         use_fake_hardware_arg,
-         fake_sensor_commands_arg,
          db_arg,
+         use_sim_arg,
          rviz_node,
          robot_state_publisher,
          run_move_group_node,

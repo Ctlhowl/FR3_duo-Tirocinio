@@ -22,7 +22,6 @@
 #include <thread>
 
 #include <franka/exception.h>
-#include <franka/gripper.h>
 #include <franka/gripper_state.h>
 #include <control_msgs/action/gripper_command.hpp>
 #include <franka_msgs/action/grasp.hpp>
@@ -33,6 +32,7 @@
 #include <sensor_msgs/msg/joint_state.hpp>
 #include <std_srvs/srv/trigger.hpp>
 
+#include <franka_gripper/IGripper.hpp>
 namespace franka_gripper {
 
 /// checks whether an asynchronous command has finished
@@ -91,7 +91,7 @@ class GripperActionServer : public rclcpp::Node {
   const int k_default_state_publish_rate = 30;     // default gripper state publish rate
   const int k_default_feedback_publish_rate = 10;  // default action feedback publish rate
 
-  std::unique_ptr<franka::Gripper> gripper_;
+  std::unique_ptr<IGripper> gripper_;
   rclcpp_action::Server<Homing>::SharedPtr homing_server_;
   rclcpp_action::Server<Move>::SharedPtr move_server_;
   rclcpp_action::Server<Grasp>::SharedPtr grasp_server_;
@@ -190,13 +190,18 @@ class GripperActionServer : public rclcpp::Node {
   template <typename T>
   auto withResultGenerator(const std::function<bool()>& command_handler)
       -> std::function<std::shared_ptr<typename T::Result>()> {
-    return [command_handler]() {
+    return [command_handler, this]() {
       auto result = std::make_shared<typename T::Result>();
       try {
         result->success = command_handler();
       } catch (const franka::Exception& e) {
         result->success = false;
         result->error = e.what();
+        RCLCPP_ERROR(this->get_logger(), "Libfranka Exception: %s", e.what());
+      } catch (const std::exception& e) {
+        result->success = false;
+        result->error = e.what();
+        RCLCPP_ERROR(this->get_logger(), "Standard Exception: %s", e.what());
       }
       return result;
     };
