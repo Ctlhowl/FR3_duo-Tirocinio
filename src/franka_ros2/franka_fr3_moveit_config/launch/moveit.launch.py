@@ -194,7 +194,7 @@ def generate_launch_description():
 
     # Load controllers
     load_controllers = []
-    for controller in ['fr3_arm_controller',  'joint_state_broadcaster']:
+    for controller in ['franka_arm',  'joint_state_broadcaster']:
         load_controllers.append(
             ExecuteProcess(
                 cmd=[
@@ -212,10 +212,11 @@ def generate_launch_description():
         executable='joint_state_publisher',
         name='joint_state_publisher',
         namespace=namespace,
+        remappings=[('joint_state_publisher', 'franka/joint_states')],
         parameters=[
             {'source_list': [
-                'franka/joint_states',
-                'franka_gripper/joint_states'
+                'franka_arm/joint_states',
+                'franka_gripper/joint_states',
             ], 'rate': 30}],
     )
 

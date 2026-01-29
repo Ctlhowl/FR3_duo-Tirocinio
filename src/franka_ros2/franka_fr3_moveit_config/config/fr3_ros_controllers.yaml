@@ -8,7 +8,7 @@
         type: joint_state_broadcaster/JointStateBroadcaster
 
       # Controller per il movimento del braccio (Joint 1-7)
-      fr3_arm_controller:
+      franka_arm:
         type: joint_trajectory_controller/JointTrajectoryController
 
       # Pubblica lo stato di tutti i giunti (braccio + gripper) - Reale
@@ -24,7 +24,7 @@
       lock_update_success: true # return update OK, although lock fails (no update occurs)
       
 /**: 
-  fr3_arm_controller:
+  franka_arm:
     ros__parameters:
       command_interfaces:
         - position

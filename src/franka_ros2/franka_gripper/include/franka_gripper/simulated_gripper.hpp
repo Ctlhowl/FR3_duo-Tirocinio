@@ -25,6 +25,9 @@ private:
   std::mutex mutex_;
   franka::GripperState current_state_;
   std::vector<std::string> joint_names_;
+  const double k_effort_threshold = 20.0;
+  double current_effort_;
+  std::atomic<bool> stop_requested_{false};
 };
 
 } // namespace franka_gripper
