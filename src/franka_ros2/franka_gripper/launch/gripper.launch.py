@@ -51,10 +51,10 @@ def generate_robot_nodes(context):
     nodes.append(
         Node(
             package='franka_gripper',
-            executable='franka_gripper_sim_node',
+            executable='franka_gripper_node',
             name=['franka_gripper'],
             namespace=namespace,
-            parameters=[{'robot_ip': robot_ip, 'joint_names': joint_names}, gripper_config],
+            parameters=[{'robot_ip': robot_ip, 'joint_names': joint_names, 'use_sim': True}, gripper_config],
             condition=IfCondition(use_sim),
         )
     )
@@ -69,13 +69,6 @@ def generate_launch_description():
                 description='Hostname or IP address of the robot.'
             ),
             DeclareLaunchArgument(
-                'use_fake_hardware',
-                default_value='false',
-                description=(
-                    'Publish fake gripper joint states without connecting to a real gripper'
-                ),
-            ),
-            DeclareLaunchArgument(
                 'arm_id',
                 default_value='fr3',
                 description=(
@@ -88,6 +81,13 @@ def generate_launch_description():
                 description=(
                     'Namespace for the gripper nodes. If not set, the nodes will not be '
                     'namespaced.'
+                ),
+            ),
+             DeclareLaunchArgument(
+                'use_sim', 
+                default_value='true',
+                description=(
+                    ' Is the robot being simulated ?'
                 ),
             ),
             OpaqueFunction(function=generate_robot_nodes)

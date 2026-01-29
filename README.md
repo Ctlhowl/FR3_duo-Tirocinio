@@ -9,9 +9,6 @@ source /opt/ros/humble/setup.bash
 export COPPELIASIM_ROOT_DIR="/opt/coppelia"
 cd /opt/coppelia/programming/ros2_packages/sim_ros2_interface/meta
 echo "sensor_msgs/msg/JointState" >> interfaces.txt
-echo "franka_msgs/msg/GraspEpsilon" >> interfaces.txt
-echo "franka_msgs/action/Move" >> interfaces.txt
-echo "franka_msgs/action/Grasp" >> interfaces.txt
 cd /opt/coppelia/programming/ros2_packages
 colcon build --symlink-install --packages-select sim_ros2_interface --cmake-args -DCOPPELIASIM_ROOT_DIR=$COPPELIASIM_ROOT_DIR
 ```
@@ -21,6 +18,8 @@ colcon build --symlink-install --packages-select sim_ros2_interface --cmake-args
 ```bash
 cd /ros2_ws
 vcs import /ros2_ws/src/franka_ros2 < /ros2_ws/src/franka_ros2/franka.repos --recursive --skip-existing
+rosdep update
+rosdep install --from-paths src --ignore-src -r -y
 colcon build --symlink-install
 source install/setup.bash
 ```
@@ -42,5 +41,5 @@ xhost +local:root
 cd /ros2_ws
 colcon build --symlink-install
 source install/setup.bash
-ros2 launch franka_fr3_moveit_config moveit.launch.py arm_id:=fr3 load_gripper:=true robot_ip:=none use_sim:=true
+ros2 launch franka_fr3_moveit_config moveit.launch.py arm_id:=fr3 load_gripper:=true robot_ip:=none use_sim:=true 
 ```

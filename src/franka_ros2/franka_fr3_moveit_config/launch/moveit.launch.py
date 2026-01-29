@@ -177,11 +177,7 @@ def generate_launch_description():
         parameters=[robot_description],
     )
 
-    ros2_controllers_path = os.path.join(
-        get_package_share_directory('franka_fr3_moveit_config'),
-        'config',
-        'fr3_ros_controllers.yaml',
-    )
+    ros2_controllers_path = os.path.join(get_package_share_directory('franka_fr3_moveit_config'),'config','fr3_ros_controllers.yaml')
 
     ros2_control_node = Node(
         package='controller_manager',
@@ -198,7 +194,7 @@ def generate_launch_description():
 
     # Load controllers
     load_controllers = []
-    for controller in ['fr3_arm_controller']:
+    for controller in ['fr3_arm_controller',  'joint_state_broadcaster']:
         load_controllers.append(
             ExecuteProcess(
                 cmd=[
@@ -218,20 +214,9 @@ def generate_launch_description():
         namespace=namespace,
         parameters=[
             {'source_list': [
-                'franka/joint_states',             # Stato del braccio da ros2_control
-                'franka_gripper/joint_states' # Stato del gripper dal bridge simulato
+                'franka/joint_states',
+                'franka_gripper/joint_states'
             ], 'rate': 30}],
-        remappings=[('joint_states', '/joint_states')],
-    )
-
-    # Spawner condizionale per lo stato dei giunti
-    joint_state_broadcaster = Node(
-        package='controller_manager',
-        executable='spawner',
-        namespace=namespace,
-        arguments=['joint_state_broadcaster'],
-        output='screen',
-        condition=IfCondition(use_sim), # Solo in simulazione
     )
 
     franka_robot_state_broadcaster = Node(
@@ -290,7 +275,6 @@ def generate_launch_description():
          run_move_group_node,
          ros2_control_node,
          joint_state_publisher,
-         joint_state_broadcaster,
          franka_robot_state_broadcaster,
          gripper_launch_file
          ]

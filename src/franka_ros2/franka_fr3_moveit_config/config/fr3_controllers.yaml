@@ -16,10 +16,9 @@ fr3_arm_controller:
     - fr3_joint7
 
 franka_gripper:
-  action_ns: gripper_action
-  type: GripperCommand
-  default: true
-  joints:
-    - fr3_finger_joint1
-    - fr3_finger_joint2
-
+    action_ns: gripper_action
+    type: GripperCommand
+    default: true
+    joints:
+      - fr3_finger_joint1
+      - fr3_finger_joint2
