@@ -123,7 +123,7 @@ planner_configs:
   TrajOptDefault:
     type: geometric::TrajOpt
 
-franka_arm:
+left_franka_arm:
   planner_configs:
     - SBLkConfigDefault
     - ESTkConfigDefault
@@ -149,7 +149,7 @@ franka_arm:
     - SPARSkConfigDefault
     - SPARStwokConfigDefault
     - TrajOptDefault
-franka_arm_hand:
+left_franka_arm_hand:
   planner_configs:
     - SBLkConfigDefault
     - ESTkConfigDefault
@@ -176,3 +176,56 @@ franka_arm_hand:
     - SPARStwokConfigDefault
     - TrajOptDefault
 
+right_franka_arm:
+  planner_configs:
+    - SBLkConfigDefault
+    - ESTkConfigDefault
+    - LBKPIECEkConfigDefault
+    - BKPIECEkConfigDefault
+    - KPIECEkConfigDefault
+    - RRTkConfigDefault
+    - RRTConnectkConfigDefault
+    - RRTstarkConfigDefault
+    - TRRTkConfigDefault
+    - PRMkConfigDefault
+    - PRMstarkConfigDefault
+    - FMTkConfigDefault
+    - BFMTkConfigDefault
+    - PDSTkConfigDefault
+    - STRIDEkConfigDefault
+    - BiTRRTkConfigDefault
+    - LBTRRTkConfigDefault
+    - BiESTkConfigDefault
+    - ProjESTkConfigDefault
+    - LazyPRMkConfigDefault
+    - LazyPRMstarkConfigDefault
+    - SPARSkConfigDefault
+    - SPARStwokConfigDefault
+    - TrajOptDefault
+
+right_franka_hand:
+  planner_configs:
+    - SBLkConfigDefault
+    - ESTkConfigDefault
+    - LBKPIECEkConfigDefault
+    - BKPIECEkConfigDefault
+    - KPIECEkConfigDefault
+    - RRTkConfigDefault
+    - RRTConnectkConfigDefault
+    - RRTstarkConfigDefault
+    - TRRTkConfigDefault
+    - PRMkConfigDefault
+    - PRMstarkConfigDefault
+    - FMTkConfigDefault
+    - BFMTkConfigDefault
+    - PDSTkConfigDefault
+    - STRIDEkConfigDefault
+    - BiTRRTkConfigDefault
+    - LBTRRTkConfigDefault
+    - BiESTkConfigDefault
+    - ProjESTkConfigDefault
+    - LazyPRMkConfigDefault
+    - LazyPRMstarkConfigDefault
+    - SPARSkConfigDefault
+    - SPARStwokConfigDefault
+    - TrajOptDefault

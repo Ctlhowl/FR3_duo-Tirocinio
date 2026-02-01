@@ -3,7 +3,7 @@
     ros__parameters:
       update_rate: 1000  # Hz
 
-      # Pubblica lo stato di tutti i giunti (braccio + gripper) - Simulazione
+      # Pubblica lo stato di tutti i giunti (braccio) - Simulazione
       joint_state_broadcaster:
         type: joint_state_broadcaster/JointStateBroadcaster
 
@@ -11,7 +11,7 @@
       franka_arm:
         type: joint_trajectory_controller/JointTrajectoryController
 
-      # Pubblica lo stato di tutti i giunti (braccio + gripper) - Reale
+      # Pubblica lo stato di tutti i giunti (braccio) - Reale
       franka_robot_state_broadcaster:
         type: franka_robot_state_broadcaster/FrankaRobotStateBroadcaster
 
@@ -28,6 +28,7 @@
     ros__parameters:
       command_interfaces:
         - position
+        - velocity
       state_interfaces:
         - position
         - velocity

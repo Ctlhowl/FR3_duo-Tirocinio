@@ -1,20 +1,3 @@
-#  Copyright (c) 2024 Franka Robotics GmbH
-#
-#  Licensed under the Apache License, Version 2.0 (the "License");
-#  you may not use this file except in compliance with the License.
-#  You may obtain a copy of the License at
-#
-#      http://www.apache.org/licenses/LICENSE-2.0
-#
-#  Unless required by applicable law or agreed to in writing, software
-#  distributed under the License is distributed on an "AS IS" BASIS,
-#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#  See the License for the specific language governing permissions and
-#  limitations under the License.
-
-# This file is an adapted version of
-# https://github.com/ros-planning/moveit_resources/blob/ca3f7930c630581b5504f3b22c40b4f82ee6369d/panda_moveit_config/launch/demo.launch.py
-
 import os
 
 from ament_index_python.packages import get_package_share_directory
@@ -52,14 +35,15 @@ def load_yaml(package_name, file_path):
 
 
 def generate_launch_description():
-    robot_ip_parameter_name = 'robot_ip'
-    namespace_parameter_name = 'namespace'
+    left_robot_ip_parameter_name = 'left_robot_ip'
+    right_robot_ip_parameter_name = 'right_robot_ip'
     load_gripper_parameter_name = 'load_gripper'
     ee_id_parameter_name = 'ee_id'
     use_sim_parameter_name = 'use_sim'
 
-    robot_ip = LaunchConfiguration(robot_ip_parameter_name)
-    namespace = LaunchConfiguration(namespace_parameter_name)
+    left_robot_ip = LaunchConfiguration(left_robot_ip_parameter_name)
+    right_robot_ip = LaunchConfiguration(right_robot_ip_parameter_name)
+    
     load_gripper = LaunchConfiguration(load_gripper_parameter_name)
     ee_id = LaunchConfiguration(ee_id_parameter_name)
     use_sim = LaunchConfiguration(use_sim_parameter_name)
@@ -71,29 +55,37 @@ def generate_launch_description():
     )
 
     # planning_context
-    franka_xacro_file = os.path.join(get_package_share_directory('franka_description'),'robots', 'fr3', 'fr3.urdf.xacro')
+    franka_xacro_file = os.path.join(get_package_share_directory('franka_description'),'robots', 'fr3_duo', 'fr3_duo.urdf.xacro')
+
     robot_description_config = Command(
         [FindExecutable(name='xacro'), ' ', 
             franka_xacro_file, 
             ' hand:=', load_gripper,
-            ' robot_ip:=', robot_ip, 
+            ' robot_ips:="[\'', left_robot_ip, '\', \'', right_robot_ip, '\']"',
             ' ee_id:=', ee_id, 
+            ' with_sc:=true' ,
             ' ros2_control:=true',
             ' use_sim:=', use_sim])
     robot_description = {'robot_description': ParameterValue(robot_description_config, value_type=str)}
 
 
-    franka_semantic_xacro_file = os.path.join(get_package_share_directory('franka_description'),'robots', 'fr3', 'fr3.srdf.xacro')
+    franka_semantic_xacro_file = os.path.join(get_package_share_directory('franka_description'),'robots', 'fr3_duo', 'fr3_duo.srdf.xacro')
+
     robot_description_semantic_config = Command(
-        [FindExecutable(name='xacro'), ' ',
-         franka_semantic_xacro_file, ' hand:=', load_gripper, ' ee_id:=', ee_id]
-    )
+        [FindExecutable(name='xacro'), ' ', franka_semantic_xacro_file,
+         ' arm_id:=fr3',
+         ' hand:=', load_gripper, 
+         ' ee_id:=', ee_id, 
+         ' arm_prefix_robot_1:=left_',
+         ' arm_prefix_robot_2:=right_', 
+        ])
+    
     robot_description_semantic = {'robot_description_semantic': ParameterValue(
         robot_description_semantic_config, value_type=str)}
 
     
-    kinematics_yaml = load_yaml('franka_fr3_moveit_config', 'config/kinematics.yaml')
-
+    kinematics_yaml = load_yaml('franka_fr3_moveit_config', 'config/kinematics_duo.yaml')
+    
     # Planning Functionality
     ompl_planning_pipeline_config = {
         'move_group': {
@@ -107,11 +99,11 @@ def generate_launch_description():
             'start_state_max_bounds_error': 0.1,
         }
     }
-    ompl_planning_yaml = load_yaml('franka_fr3_moveit_config', 'config/ompl_planning.yaml')
+    ompl_planning_yaml = load_yaml('franka_fr3_moveit_config', 'config/ompl_planning_duo.yaml')
     ompl_planning_pipeline_config['move_group'].update(ompl_planning_yaml)
 
     # Trajectory Execution Functionality
-    moveit_simple_controllers_yaml = load_yaml('franka_fr3_moveit_config', 'config/fr3_controllers.yaml')
+    moveit_simple_controllers_yaml = load_yaml('franka_fr3_moveit_config', 'config/fr3_duo_controllers.yaml')
     moveit_controllers = {
         'moveit_simple_controller_manager': moveit_simple_controllers_yaml,
         'moveit_controller_manager': 'moveit_simple_controller_manager'
@@ -136,7 +128,6 @@ def generate_launch_description():
     run_move_group_node = Node(
         package='moveit_ros_move_group',
         executable='move_group',
-        namespace=namespace,
         output='screen',
         parameters=[
             robot_description,
@@ -146,13 +137,12 @@ def generate_launch_description():
             trajectory_execution,
             moveit_controllers,
             planning_scene_monitor_parameters,
-            {"use_sim_time": use_sim}
         ],
     )
-    
+
     # RViz
     rviz_base = os.path.join(get_package_share_directory('franka_fr3_moveit_config'), 'rviz')
-    rviz_full_config = os.path.join(rviz_base, 'franka.rviz')
+    rviz_full_config = os.path.join(rviz_base, 'franka_duo.rviz')
 
     rviz_node = Node(
         package='rviz2',
@@ -167,28 +157,24 @@ def generate_launch_description():
             kinematics_yaml,
         ],
     )
-    
+
     # Publish TF
     robot_state_publisher = Node(
         package='robot_state_publisher',
         executable='robot_state_publisher',
         name='robot_state_publisher',
-        namespace=namespace,
         output='both',
         parameters=[robot_description],
     )
 
-    ros2_controllers_path = os.path.join(get_package_share_directory('franka_fr3_moveit_config'),'config','fr3_ros_controllers.yaml')
+
+    ros2_controllers_path = os.path.join(get_package_share_directory('franka_fr3_moveit_config'),'config','fr3_duo_ros_controllers.yaml')
 
     ros2_control_node = Node(
         package='controller_manager',
         executable='ros2_control_node',
-        namespace=namespace,
-        parameters=[ros2_controllers_path],
-        remappings=[
-            ('~/robot_description', '/robot_description'),
-            ('joint_states', 'franka/joint_states')
-        ],
+        parameters=[robot_description, ros2_controllers_path],
+        remappings=[('joint_states', 'franka_duo/joint_states')],
         output={
             'stdout': 'screen',
             'stderr': 'screen',
@@ -198,14 +184,13 @@ def generate_launch_description():
 
     # Load controllers
     load_controllers = []
-    for controller in ['franka_arm',  'joint_state_broadcaster']:
+    for controller in ['left_franka_arm', 'right_franka_arm', 'joint_state_broadcaster']:
         load_controllers.append(
             ExecuteProcess(
                 cmd=[
                     'ros2', 'run', 'controller_manager', 'spawner', controller,
                     '--controller-manager-timeout', '60',
-                    '--controller-manager',
-                    PathJoinSubstitution([namespace, 'controller_manager'])
+                    '--controller-manager', 'controller_manager'
                 ],
                 output='screen'
             )
@@ -215,33 +200,31 @@ def generate_launch_description():
         package='joint_state_publisher',
         executable='joint_state_publisher',
         name='joint_state_publisher',
-        namespace=namespace,
         parameters=[
             {'source_list': [
-                'franka_arm/joint_states',
-                'franka_gripper/joint_states',
+                'franka_duo_arm/joint_states',
             ], 'rate': 30}],
     )
 
     franka_robot_state_broadcaster = Node(
         package='controller_manager',
         executable='spawner',
-        namespace=namespace,
         arguments=['franka_robot_state_broadcaster'],
         output='screen',
         condition=UnlessCondition(use_sim), # Solo sul robot reale
     )
+    
 
-    robot_arg = DeclareLaunchArgument(
-        robot_ip_parameter_name,
-        description='Hostname or IP address of the robot.')
+    left_robot_arg = DeclareLaunchArgument(
+        left_robot_ip_parameter_name,
+        default_value='172.16.0.2',
+        description='Hostname or IP address of the left robot.')
 
-    namespace_arg = DeclareLaunchArgument(
-        namespace_parameter_name,
-        default_value='',
-        description='Namespace for the robot.'
-    )
-
+    right_robot_arg = DeclareLaunchArgument(
+        right_robot_ip_parameter_name,
+        default_value='172.16.0.3',
+        description='Hostname or IP address of the right robot.')
+    
     load_gripper_arg = DeclareLaunchArgument(
         load_gripper_parameter_name,
         default_value='true',
@@ -260,16 +243,25 @@ def generate_launch_description():
         description='Is the robot being simulated?.'
     )
 
-    gripper_launch_file = IncludeLaunchDescription(
+    left_gripper_launch_file = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([PathJoinSubstitution(
             [FindPackageShare('franka_gripper'), 'launch', 'gripper.launch.py'])]),
-            launch_arguments={'robot_ip': robot_ip,
+            launch_arguments={'robot_ip': left_robot_ip,
                               use_sim_parameter_name: use_sim,
-                              'namespace': namespace}.items(),
+                              'namespace': 'left'}.items(),
     )
+
+    right_gripper_launch_file = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource([PathJoinSubstitution(
+            [FindPackageShare('franka_gripper'), 'launch', 'gripper.launch.py'])]),
+            launch_arguments={'robot_ip': right_robot_ip,
+                              use_sim_parameter_name: use_sim,
+                              'namespace': 'right'}.items(),
+    )
+
     return LaunchDescription(
-        [robot_arg,
-         namespace_arg,
+        [left_robot_arg,
+         right_robot_arg,
          load_gripper_arg,
          ee_id_arg,
          db_arg,
@@ -280,7 +272,8 @@ def generate_launch_description():
          ros2_control_node,
          joint_state_publisher,
          franka_robot_state_broadcaster,
-         gripper_launch_file
+         left_gripper_launch_file,
+         right_gripper_launch_file
          ]
         + load_controllers
     )

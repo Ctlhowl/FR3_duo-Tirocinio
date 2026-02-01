@@ -17,11 +17,16 @@ colcon build --symlink-install --packages-select sim_ros2_interface --cmake-args
 2. Clonare le dipendenze della repo franka_ros2 e Compliare l'intero progetto
 ```bash
 cd /ros2_ws
+sudo apt update && apt upgrade
 vcs import /ros2_ws/src/franka_ros2 < /ros2_ws/src/franka_ros2/franka.repos --recursive --skip-existing
 rosdep update
 rosdep install --from-paths src --ignore-src -r -y
 colcon build --symlink-install
 source install/setup.bash
+```
+### Avviare Rqt Graph
+```bash
+ros2 run rqt_graph rqt_graph
 ```
 
 ### Avviare Coppeliasim
@@ -36,10 +41,18 @@ In caso di errore `X11 connection` eseguire:
 xhost +local:root
 ```
 
-### Avviare Moveit
+### Avviare Moveit Single Arm
 ```bash
 cd /ros2_ws
 colcon build --symlink-install
 source install/setup.bash
-ros2 launch franka_fr3_moveit_config moveit.launch.py arm_id:=fr3 load_gripper:=true robot_ip:=none use_sim:=true 
+ros2 launch franka_fr3_moveit_config moveit.launch.py load_gripper:=true robot_ip:=none use_sim:=true 
+```
+
+### Avviare Moveit Dual Arm
+```bash
+cd /ros2_ws
+colcon build --symlink-install
+source install/setup.bash
+ros2 launch franka_fr3_moveit_config moveit_duo.launch.py load_gripper:=true left_robot_ip:=dont-care right_robot_ip:=dont-care use_sim:=true 
 ```
