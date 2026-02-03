@@ -137,6 +137,7 @@ def generate_launch_description():
             trajectory_execution,
             moveit_controllers,
             planning_scene_monitor_parameters,
+            {"use_sim_time": use_sim}
         ],
     )
 
@@ -173,8 +174,11 @@ def generate_launch_description():
     ros2_control_node = Node(
         package='controller_manager',
         executable='ros2_control_node',
+        namespace='franka_duo',
         parameters=[robot_description, ros2_controllers_path],
-        remappings=[('joint_states', 'franka_duo/joint_states')],
+        remappings=[
+            ('~/robot_description', '/robot_description'),
+        ],
         output={
             'stdout': 'screen',
             'stderr': 'screen',
@@ -184,13 +188,13 @@ def generate_launch_description():
 
     # Load controllers
     load_controllers = []
-    for controller in ['left_franka_arm', 'right_franka_arm', 'joint_state_broadcaster']:
+    for controller in ['left_arm_controller', 'right_arm_controller', 'joint_state_broadcaster']:
         load_controllers.append(
             ExecuteProcess(
                 cmd=[
                     'ros2', 'run', 'controller_manager', 'spawner', controller,
                     '--controller-manager-timeout', '60',
-                    '--controller-manager', 'controller_manager'
+                    '--controller-manager', '/franka_duo/controller_manager'
                 ],
                 output='screen'
             )
@@ -202,7 +206,7 @@ def generate_launch_description():
         name='joint_state_publisher',
         parameters=[
             {'source_list': [
-                'franka_duo_arm/joint_states',
+                'franka_duo/joint_states',
             ], 'rate': 30}],
     )
 
@@ -248,7 +252,7 @@ def generate_launch_description():
             [FindPackageShare('franka_gripper'), 'launch', 'gripper.launch.py'])]),
             launch_arguments={'robot_ip': left_robot_ip,
                               use_sim_parameter_name: use_sim,
-                              'namespace': 'left'}.items(),
+                              'namespace': 'franka_duo/left'}.items(),
     )
 
     right_gripper_launch_file = IncludeLaunchDescription(
@@ -256,7 +260,7 @@ def generate_launch_description():
             [FindPackageShare('franka_gripper'), 'launch', 'gripper.launch.py'])]),
             launch_arguments={'robot_ip': right_robot_ip,
                               use_sim_parameter_name: use_sim,
-                              'namespace': 'right'}.items(),
+                              'namespace': 'franka_duo/right'}.items(),
     )
 
     return LaunchDescription(
