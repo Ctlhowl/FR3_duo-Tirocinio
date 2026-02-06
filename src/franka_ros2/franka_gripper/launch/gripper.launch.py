@@ -52,7 +52,7 @@ def generate_robot_nodes(context):
         Node(
             package='franka_gripper',
             executable='franka_gripper_node',
-            name=['gripper'],
+            name=['franka_gripper'],
             namespace=namespace,
             parameters=[{'robot_ip': robot_ip, 'joint_names': joint_names, 'use_sim': True}, gripper_config],
             condition=IfCondition(use_sim),

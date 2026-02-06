@@ -4,6 +4,7 @@ Panels:
     Name: Displays
     Property Tree Widget:
       Expanded:
+        - /Global Options1
         - /MotionPlanning1
         - /MotionPlanning1/Planned Path1
       Splitter Ratio: 0.5
@@ -1470,7 +1471,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 3.119211196899414
+      Distance: 2.0654795169830322
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -1485,10 +1486,10 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.5953981876373291
+      Pitch: 0.15979716181755066
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 5.958578109741211
+      Yaw: 6.2085771560668945
     Saved: ~
 Window Geometry:
   Displays:

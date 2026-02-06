@@ -22,7 +22,7 @@ void SimulatedGripper::jointStateCallback(const sensor_msgs::msg::JointState::Sh
   double effort_sum = 0.0;
 
   for (size_t i = 0; i < msg->name.size(); ++i) {
-    if (msg->name[i] == "fr3_finger_joint1" || msg->name[i] == "fr3_finger_joint2") {
+    if (msg->name[i] == joint_names_[0] || msg->name[i] ==  joint_names_[1]) {
       width += msg->position[i] / 2;
       if (msg->effort.size() > i) {
         effort_sum += std::abs(msg->effort[i]);

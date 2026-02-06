@@ -24,6 +24,9 @@ rosdep install --from-paths src --ignore-src -r -y
 colcon build --symlink-install
 source install/setup.bash
 ```
+
+3. Estrarre il file `franka_descriptio.zip` in `src/franka_ros2`
+
 ### Avviare Rqt Graph
 ```bash
 ros2 run rqt_graph rqt_graph
@@ -54,5 +57,13 @@ ros2 launch franka_fr3_moveit_config moveit.launch.py load_gripper:=true robot_i
 cd /ros2_ws
 colcon build --symlink-install
 source install/setup.bash
-ros2 launch franka_fr3_moveit_config moveit_duo.launch.py load_gripper:=true left_robot_ip:=dont-care right_robot_ip:=dont-care use_sim:=true 
+ros2 launch franka_fr3_moveit_config moveit_duo.launch.py load_gripper:=true left_robot_ip:=none right_robot_ip:=none use_sim:=true 
+```
+
+### Avviare la scena Moveit Dual Arm
+```bash
+cd /ros2_ws
+colcon build --symlink-install
+source install/setup.bash
+ros2 launch fr3_motion_control move_fr3.launch.py load_gripper:=true left_robot_ip:=none right_robot_ip:=none use_sim:=true 
 ```
