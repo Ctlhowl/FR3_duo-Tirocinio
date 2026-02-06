@@ -11,16 +11,15 @@ find_package(rclcpp REQUIRED)
 find_package(moveit_ros_planning_interface REQUIRED)
 find_package(geometry_msgs REQUIRED)
 
-add_executable(move_fr3_node src/move_fr3_node.cpp)
+add_executable(dual_hand_changing src/dual_hand_changing_motion.cpp)
+add_executable(start_pose src/start_pose_motion.cpp)
 
-ament_target_dependencies(move_fr3_node
-  rclcpp
-  moveit_ros_planning_interface
-  geometry_msgs
-)
+ament_target_dependencies(dual_hand_changing rclcpp moveit_ros_planning_interface geometry_msgs)
+ament_target_dependencies(start_pose rclcpp moveit_ros_planning_interface geometry_msgs)
 
 install(TARGETS
-  move_fr3_node
+  dual_hand_changing
+  start_pose
   DESTINATION lib/${PROJECT_NAME})
 
 install(DIRECTORY launch

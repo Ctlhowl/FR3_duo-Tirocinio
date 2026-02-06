@@ -61,9 +61,13 @@ ros2 launch franka_fr3_moveit_config moveit_duo.launch.py load_gripper:=true lef
 ```
 
 ### Avviare la scena Moveit Dual Arm
+Liste dei task disponibili:
+- dual_hand_changing
+- start_pose
+
 ```bash
 cd /ros2_ws
 colcon build --symlink-install
 source install/setup.bash
-ros2 launch fr3_motion_control move_fr3.launch.py load_gripper:=true left_robot_ip:=none right_robot_ip:=none use_sim:=true 
+ros2 launch fr3_motion_control fr3_motion_control.launch.py load_gripper:=true left_robot_ip:=none right_robot_ip:=none use_sim:=true task:=dual_hand_changing
 ```
