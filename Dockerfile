@@ -57,6 +57,11 @@ ENV LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${COPPELIASIM_ROOT_DIR}
 RUN sudo apt-get update \
     && sudo apt-get install -y --no-install-recommends \
         ros-humble-moveit \
+        ros-humble-moveit-task-constructor-core \
+        ros-humble-moveit-task-constructor-visualization \
+        ros-humble-moveit-task-constructor-capabilities \
+        ros-humble-moveit-task-constructor-demo \
+        ros-humble-moveit-ros-planning-interface \
         ros-humble-rmw-cyclonedds-cpp \
         ros-humble-joint-trajectory-controller \
         ros-humble-ros2-control \

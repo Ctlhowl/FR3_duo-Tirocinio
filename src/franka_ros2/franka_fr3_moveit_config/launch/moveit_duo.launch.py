@@ -122,7 +122,9 @@ def generate_launch_description():
         'publish_state_updates': True,
         'publish_transforms_updates': True,
     }
-
+    
+    mtc_capabilities = {'capabilities': 'move_group/ExecuteTaskSolutionCapability'}
+    
     # Start the actual move_group node/action server
     run_move_group_node = Node(
         package='moveit_ros_move_group',
@@ -136,6 +138,7 @@ def generate_launch_description():
             trajectory_execution,
             moveit_controllers,
             planning_scene_monitor_parameters,
+            mtc_capabilities,
             {"use_sim_time": use_sim}
         ],
     )

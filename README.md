@@ -5,10 +5,13 @@ Sviluppo e configurazione di un ambiente di simulazione basato su ROS 2 e Coppel
 1. Al primo avvio in assoluto dobbiamo aggiungere il messaggio `sensor_msgs/msg/JointState` nel file `meta/interface.txt` e successivamente ricompilare il plugin `ROS2Interface` a CoppeliaSim per permettere la corretta comunicazione con ROS2.
 
 ```bash
+sudo apt 
+
 source /opt/ros/humble/setup.bash
 export COPPELIASIM_ROOT_DIR="/opt/coppelia"
 cd /opt/coppelia/programming/ros2_packages/sim_ros2_interface/meta
 echo "sensor_msgs/msg/JointState" >> interfaces.txt
+echo "rosgraph_msgs/msg/Clock" >> interfaces.txt
 cd /opt/coppelia/programming/ros2_packages
 colcon build --symlink-install --packages-select sim_ros2_interface --cmake-args -DCOPPELIASIM_ROOT_DIR=$COPPELIASIM_ROOT_DIR
 ```
@@ -60,7 +63,7 @@ source install/setup.bash
 ros2 launch franka_fr3_moveit_config moveit_duo.launch.py load_gripper:=true left_robot_ip:=none right_robot_ip:=none use_sim:=true 
 ```
 
-### Avviare la scena Moveit Dual Arm
+### Avviare la scena Moveit Dual Arm con MTC
 Liste dei task disponibili:
 - dual_hand_changing
 - start_pose
@@ -70,4 +73,12 @@ cd /ros2_ws
 colcon build --symlink-install
 source install/setup.bash
 ros2 launch fr3_motion_control fr3_motion_control.launch.py load_gripper:=true left_robot_ip:=none right_robot_ip:=none use_sim:=true task:=dual_hand_changing
+```
+
+### Avviare la scena Moveit Dual Arm con MTC
+```bash
+cd /ros2_ws
+colcon build --symlink-install
+source install/setup.bash
+ros2 launch fr3_mtc fr3_mtc.launch.py load_gripper:=true left_robot_ip:=none right_robot_ip:=none use_sim:=true
 ```
