@@ -12,6 +12,7 @@ export COPPELIASIM_ROOT_DIR="/opt/coppelia"
 cd /opt/coppelia/programming/ros2_packages/sim_ros2_interface/meta
 echo "sensor_msgs/msg/JointState" >> interfaces.txt
 echo "rosgraph_msgs/msg/Clock" >> interfaces.txt
+echo "geometry_msgs/msg/PoseStamped" >> interfaces.txt
 cd /opt/coppelia/programming/ros2_packages
 colcon build --symlink-install --packages-select sim_ros2_interface --cmake-args -DCOPPELIASIM_ROOT_DIR=$COPPELIASIM_ROOT_DIR
 ```
