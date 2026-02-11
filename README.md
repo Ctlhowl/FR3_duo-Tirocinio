@@ -5,8 +5,6 @@ Sviluppo e configurazione di un ambiente di simulazione basato su ROS 2 e Coppel
 1. Al primo avvio in assoluto dobbiamo aggiungere il messaggio `sensor_msgs/msg/JointState` nel file `meta/interface.txt` e successivamente ricompilare il plugin `ROS2Interface` a CoppeliaSim per permettere la corretta comunicazione con ROS2.
 
 ```bash
-sudo apt 
-
 source /opt/ros/humble/setup.bash
 export COPPELIASIM_ROOT_DIR="/opt/coppelia"
 cd /opt/coppelia/programming/ros2_packages/sim_ros2_interface/meta

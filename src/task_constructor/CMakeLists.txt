@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.8)
-project(fr3_mtc)
+project(task_constructor)
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
@@ -13,14 +13,20 @@ find_package(moveit_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(shape_msgs REQUIRED)
 
-add_executable(mtc_task_node src/mtc_task_node.cpp)
+add_executable(mtc_node src/mtc_node.cpp)
+add_executable(object_spawner src/object_spawner.cpp)
 
-target_include_directories(mtc_task_node PUBLIC
+target_include_directories(mtc_node PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>
 )
 
-ament_target_dependencies(mtc_task_node
+target_include_directories(object_spawner PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>
+)
+
+ament_target_dependencies(mtc_node
   rclcpp
   moveit_task_constructor_core
   moveit_ros_planning_interface
@@ -29,7 +35,15 @@ ament_target_dependencies(mtc_task_node
   shape_msgs
 )
 
-install(TARGETS mtc_task_node
+ament_target_dependencies(object_spawner
+  rclcpp
+  moveit_ros_planning_interface
+  moveit_msgs
+  geometry_msgs
+  shape_msgs
+)
+
+install(TARGETS mtc_node object_spawner
   DESTINATION lib/${PROJECT_NAME}
 )
 
