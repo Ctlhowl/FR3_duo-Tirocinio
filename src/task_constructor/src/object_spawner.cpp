@@ -9,7 +9,7 @@ namespace task_constructor
             "/spawn_request", 10, 
             std::bind(&ObjectSpawner::spawn_callback, this, std::placeholders::_1));
 
-        RCLCPP_INFO(LOGGER, "[INFO] Nodo Spawner Oggetto Coppelia avviato.");
+        RCLCPP_INFO(LOGGER, "[INFO] Nodo Spawner Oggetto avviato.");
     }
 
     void ObjectSpawner::spawn_callback(const geometry_msgs::msg::PoseStamped::SharedPtr msg) {

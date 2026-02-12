@@ -77,7 +77,7 @@ bool SimulatedGripper::move(double width, double /*speed*/) {
 
   // Parametri di controllo
   const double tolerance = 0.002;
-  const auto timeout = std::chrono::seconds(3);
+  const auto timeout = std::chrono::seconds(5);
   auto start_time = std::chrono::steady_clock::now();
 
   // Loop di verifica

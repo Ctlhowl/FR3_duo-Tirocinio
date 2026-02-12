@@ -27,6 +27,13 @@ def load_yaml(package_name, file_path):
             return yaml.safe_load(file)
     except EnvironmentError:  # parent of IOError, OSError *and* WindowsError where available
         return None
+    
+def prefix_joint_limits(limits_dict, prefixes):
+    prefixed_limits = {}
+    for joint_name, limits in limits_dict.items():
+        for prefix in prefixes:
+            prefixed_limits[f'{prefix}{joint_name}'] = limits
+    return prefixed_limits
 
 def generate_launch_description():
     left_robot_ip_parameter_name = 'left_robot_ip'
@@ -57,7 +64,6 @@ def generate_launch_description():
             ' use_sim:=', use_sim])
     robot_description = {'robot_description': ParameterValue(robot_description_config, value_type=str)}
 
-
     franka_semantic_xacro_file = os.path.join(get_package_share_directory('franka_description'),'robots', 'fr3_duo', 'fr3_duo.srdf.xacro')
 
     robot_description_semantic_config = Command(
@@ -74,36 +80,37 @@ def generate_launch_description():
     
     kinematics_yaml = load_yaml('franka_fr3_moveit_config', 'config/kinematics_duo.yaml')
 
+    raw_joint_limits = load_yaml('franka_description', 'robots/fr3/joint_limits.yaml')
+    prefixed_joint_limits = prefix_joint_limits(raw_joint_limits, ['left_fr3_', 'right_fr3_'])
+
+    joint_limits = {'robot_description_planning': {'joint_limits': prefixed_joint_limits}}
+    
     ompl_planning_pipeline_config = {
-        'move_group': {
-            'planning_plugin': 'ompl_interface/OMPLPlanner',
-            'request_adapters': 'default_planner_request_adapters/AddTimeOptimalParameterization '
-                                'default_planner_request_adapters/ResolveConstraintFrames '
-                                'default_planner_request_adapters/FixWorkspaceBounds '
-                                'default_planner_request_adapters/FixStartStateBounds '
-                                'default_planner_request_adapters/FixStartStateCollision '
-                                'default_planner_request_adapters/FixStartStatePathConstraints',
-            'start_state_max_bounds_error': 0.1,
+    'move_group': {
+        'planning_plugin': 'ompl_interface/OMPLPlanner',
+        'request_adapters': 'default_planner_request_adapters/AddTimeOptimalParameterization '
+                            'default_planner_request_adapters/ResolveConstraintFrames '
+                            'default_planner_request_adapters/FixWorkspaceBounds '
+                            'default_planner_request_adapters/FixStartStateBounds '
+                            'default_planner_request_adapters/FixStartStateCollision '
+                            'default_planner_request_adapters/FixStartStatePathConstraints',
+        'start_state_max_bounds_error': 0.1,
         }
     }
     ompl_planning_yaml = load_yaml('franka_fr3_moveit_config', 'config/ompl_planning_duo.yaml')
     ompl_planning_pipeline_config['move_group'].update(ompl_planning_yaml)
 
-    joint_limits_yaml = load_yaml('franka_description', 'robots/fr3/joint_limits.yaml')
-    joint_limits = {'robot_description_planning': joint_limits_yaml}
-
-
-    run_mtc_task_node = Node(
-        package='fr3_mtc',
-        executable='mtc_task_node',
+    run_mtc_node = Node(
+        package='task_constructor',
+        executable='mtc_node',
         output='screen',
         parameters=[
             robot_description,
             robot_description_semantic,
             kinematics_yaml,
-            ompl_planning_pipeline_config,
             joint_limits,
-            {"use_sim_time": use_sim}
+            ompl_planning_pipeline_config,
+            {"use_sim_time": True}
         ],
     )
 
@@ -141,5 +148,5 @@ def generate_launch_description():
         load_gripper_arg,
         ee_id_arg,
         use_sim_arg,
-        run_mtc_task_node
+        run_mtc_node
     ])

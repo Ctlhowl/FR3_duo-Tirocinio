@@ -14,7 +14,7 @@
 
 namespace task_constructor
 {
-    static const rclcpp::Logger LOGGER = rclcpp::get_logger("mtc_task_node");
+    static const rclcpp::Logger LOGGER = rclcpp::get_logger("mtc_node");
     namespace mtc = moveit::task_constructor;
 
     class MTCTaskNode
