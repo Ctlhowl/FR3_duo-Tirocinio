@@ -23,7 +23,7 @@ namespace task_constructor
 
         collision_object.primitives.resize(1);
         collision_object.primitives[0].type = shape_msgs::msg::SolidPrimitive::BOX;
-        collision_object.primitives[0].dimensions = {0.04, 0.20, 0.04};
+        collision_object.primitives[0].dimensions = {0.05, 0.05, 0.05};
 
         collision_object.pose = msg->pose;
 
