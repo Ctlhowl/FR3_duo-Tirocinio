@@ -48,12 +48,6 @@ def generate_launch_description():
     ee_id = LaunchConfiguration(ee_id_parameter_name)
     use_sim = LaunchConfiguration(use_sim_parameter_name)
 
-    # Command-line arguments
-
-    db_arg = DeclareLaunchArgument(
-        'db', default_value='False', description='Database flag'
-    )
-
     # planning_context
     franka_xacro_file = os.path.join(get_package_share_directory('franka_description'),'robots', 'fr3_duo', 'fr3_duo.urdf.xacro')
 
@@ -178,10 +172,6 @@ def generate_launch_description():
         executable='ros2_control_node',
         namespace='franka_duo',
         parameters=[robot_description, ros2_controllers_path],
-        remappings=[
-            ('~/robot_description', '/robot_description'),
-            ('joint_states', 'franka_duo/joint_states')
-        ],
         output={
             'stdout': 'screen',
             'stderr': 'screen',
@@ -191,7 +181,7 @@ def generate_launch_description():
 
     # Load controllers
     load_controllers = []
-    for controller in ['left_arm_controller', 'right_arm_controller', 'joint_state_broadcaster']:
+    for controller in ['left_arm_controller', 'right_arm_controller']:
         load_controllers.append(
             ExecuteProcess(
                 cmd=[
@@ -209,19 +199,11 @@ def generate_launch_description():
         name='joint_state_publisher',
         parameters=[
             {'source_list': [
-                'franka_duo/left/arm/joint_states',
-                'franka_duo/right/arm/joint_states',
+                'franka_duo/left/joint_states',
+                'franka_duo/right/joint_states',
                 'franka_duo/left_gripper/joint_states',
                 'franka_duo/right_gripper/joint_states',
             ], 'rate': 30}],
-    )
-
-    franka_robot_state_broadcaster = Node(
-        package='controller_manager',
-        executable='spawner',
-        arguments=['franka_robot_state_broadcaster'],
-        output='screen',
-        condition=UnlessCondition(use_sim), # Solo sul robot reale
     )
     
 
@@ -267,14 +249,12 @@ def generate_launch_description():
          right_robot_arg,
          load_gripper_arg,
          ee_id_arg,
-         db_arg,
          use_sim_arg,
          rviz_node,
          robot_state_publisher,
          run_move_group_node,
          ros2_control_node,
          joint_state_publisher,
-         franka_robot_state_broadcaster,
          gripper_launch_file
          ]
         + load_controllers

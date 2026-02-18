@@ -46,14 +46,6 @@ In caso di errore `X11 connection` eseguire:
 xhost +local:root
 ```
 
-### Avviare Moveit Single Arm
-```bash
-cd /ros2_ws
-colcon build --symlink-install
-source install/setup.bash
-ros2 launch franka_fr3_moveit_config moveit.launch.py load_gripper:=true robot_ip:=none use_sim:=true 
-```
-
 ### Avviare Moveit Dual Arm
 ```bash
 cd /ros2_ws
