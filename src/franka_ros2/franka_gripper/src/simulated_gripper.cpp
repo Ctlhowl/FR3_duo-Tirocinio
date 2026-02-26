@@ -92,7 +92,6 @@ bool SimulatedGripper::move(double width, double /*speed*/) {
     
     {
       std::lock_guard<std::mutex> lock(mutex_);
-      // Calcola l'errore assoluto rispetto al target
       double error = std::abs(state.width - width);
       
       if (error <= tolerance) {

@@ -73,7 +73,7 @@ GripperActionServer::GripperActionServer(const rclcpp::NodeOptions& options) : N
 
   bool use_sim = this->get_parameter("use_sim").as_bool();
   if (use_sim) {
-    RCLCPP_INFO(this->get_logger(), "Running in SIMULATION mode (CoppeliaSim)");
+    RCLCPP_INFO(this->get_logger(), "Running in SIMULATION mode");
     gripper_ = std::make_unique<SimulatedGripper>(this);
   } else {
     try {

@@ -23,7 +23,7 @@ namespace task_constructor
       return;
     }
 
-    if (!task_.plan(40))
+    if (!task_.plan(10))
     {
       RCLCPP_ERROR_STREAM(LOGGER, "[ERROR] Pianificazione del task fallita");
       return;
@@ -113,6 +113,7 @@ namespace task_constructor
           stage->properties().configureInitFrom(mtc::Stage::PARENT, {"group"});
           stage->setMarkerNS("approach_left");
           stage->setMinMaxDistance(0.05, 0.1);
+
           geometry_msgs::msg::Vector3Stamped direction;
           direction.header.frame_id = tcp;
           direction.vector.z = 1.0;
@@ -125,7 +126,7 @@ namespace task_constructor
           auto stage = std::make_unique<mtc::stages::GenerateGraspPose>("generate_grasp_pose_left");
           stage->setPreGraspPose("open");
           stage->setObject(object_name);
-          stage->setAngleDelta(M_PI / 2);
+          stage->setAngleDelta(M_PI / 4);
           stage->setMonitoredStage(task.stages()->findChild("current"));
           stage->properties().configureInitFrom(mtc::Stage::PARENT);
 
@@ -203,19 +204,74 @@ namespace task_constructor
 
       {
         auto stage = std::make_unique<mtc::stages::MoveTo>("open_hand_right", gripper_planner);
-        stage->setGroup("right_fr3_hand");
+        stage->setGroup(hand);
         stage->setGoal("open");
         right_robot->insert(std::move(stage));
       }
 
       {
-        auto stage = std::make_unique<mtc::stages::MoveTo>("move_right_to_handover", sampling_planner);
-        stage->properties().configureInitFrom(mtc::Stage::PARENT, {"eef", "group"});
-        stage->setGroup(arm);
-        stage->setGoal("right_handover_pose");
+        auto stage = std::make_unique<mtc::stages::Connect>(
+            "connect_to_handover", mtc::stages::Connect::GroupPlannerVector{{arm, sampling_planner}});
+        stage->setTimeout(5.0);
+        stage->properties().configureInitFrom(mtc::Stage::PARENT);
         right_robot->insert(std::move(stage));
       }
 
+      // Container per Approccio + Posa Generata (Handover)
+      {
+        auto handover = std::make_unique<mtc::SerialContainer>("handover_approach_and_grasp");
+        right_robot->properties().exposeTo(handover->properties(), {"eef", "group", "ik_frame"});
+        handover->properties().configureInitFrom(mtc::Stage::PARENT, {"eef", "group", "ik_frame"});
+
+        // Approccio
+        {
+          auto stage = std::make_unique<mtc::stages::MoveRelative>("approach_right", cartesian_planner);
+          stage->properties().configureInitFrom(mtc::Stage::PARENT, {"group"});
+          stage->setMarkerNS("approach_right");
+          stage->setMinMaxDistance(0.05, 0.1);
+          
+          // Ci muoviamo in avanti lungo l'asse Z del TCP destro
+          geometry_msgs::msg::Vector3Stamped direction;
+          direction.header.frame_id = tcp;
+          direction.vector.z = 1.0;
+          stage->setDirection(direction);
+          handover->insert(std::move(stage));
+        }
+
+        // Generazione della posa relativa all'altro braccio
+        {
+          auto stage = std::make_unique<mtc::stages::GeneratePose>("generate_handover_pose");
+          stage->setMonitoredStage(task.stages()->findChild("left_arm_pick_sequence"));
+
+          geometry_msgs::msg::PoseStamped target_pose;
+          target_pose.header.frame_id = "left_fr3_hand_tcp";
+          
+          target_pose.pose.position.x = 0.0;
+          target_pose.pose.position.y = 0.0;
+          target_pose.pose.position.z = 0.0; 
+
+          tf2::Quaternion q;
+          q.setRPY(M_PI, 0, M_PI / 2);
+          target_pose.pose.orientation.x = q.x();
+          target_pose.pose.orientation.y = q.y();
+          target_pose.pose.orientation.z = q.z();
+          target_pose.pose.orientation.w = q.w();
+
+          stage->setPose(target_pose);
+          
+          auto wrapper = std::make_unique<mtc::stages::ComputeIK>("compute_ik_handover_right", std::move(stage));
+          wrapper->setMaxIKSolutions(8);
+          wrapper->properties().configureInitFrom(mtc::Stage::PARENT, {"eef", "group"});
+          wrapper->properties().configureInitFrom(mtc::Stage::INTERFACE, {"target_pose"});
+          wrapper->setIKFrame(tcp);
+
+          handover->insert(std::move(wrapper));
+        }
+
+        right_robot->insert(std::move(handover));
+      }
+
+      //Trasferimento logico dell'oggetto nella scena
       {
         auto stage = std::make_unique<mtc::stages::ModifyPlanningScene>("transfer_object");
         stage->allowCollisions(object_name, 
@@ -232,12 +288,12 @@ namespace task_constructor
                                   ->getLinkModelNamesWithCollisionGeometry(),
                               true);
         
-        
         stage->detachObject(object_name, "left_fr3_hand_tcp");
         stage->attachObject(object_name, hand);
         right_robot->insert(std::move(stage));
       }
 
+      // Chiusura pinza destra
       {
         auto stage = std::make_unique<mtc::stages::MoveTo>("close_hand_right", gripper_planner);
         stage->setGroup(hand);
@@ -245,6 +301,7 @@ namespace task_constructor
         right_robot->insert(std::move(stage));
       }
 
+      // Apertura pinza sinistra
       {
         auto stage = std::make_unique<mtc::stages::MoveTo>("open_hand_left", gripper_planner);
         stage->setGroup("left_fr3_hand");
@@ -252,15 +309,94 @@ namespace task_constructor
         right_robot->insert(std::move(stage));
       }
 
+      // 
       {
-        auto stage = std::make_unique<mtc::stages::MoveTo>("safe_pose", sampling_planner);
-        stage->setGroup("dual_arm");
-        stage->setGoal("safe_pose");
-        right_robot->insert(std::move(stage));
+          auto stage = std::make_unique<mtc::stages::MoveRelative>("retreat_left", cartesian_planner);
+          stage->setGroup("left_fr3_arm");
+          stage->setMarkerNS("retreat_left");
+          stage->setMinMaxDistance(0.05, 0.1);
+          
+          geometry_msgs::msg::Vector3Stamped direction;
+          direction.header.frame_id = "left_fr3_hand_tcp";
+          direction.vector.z = -1.0;
+          stage->setDirection(direction);
+          right_robot->insert(std::move(stage));
+        }
+
+      // Fase di piazzamento
+      {
+        auto place = std::make_unique<mtc::SerialContainer>("place_sequence_right");
+        right_robot->properties().exposeTo(place->properties(), {"group", "eef", "ik_frame"});
+        place->properties().configureInitFrom(mtc::Stage::PARENT, {"group", "eef", "ik_frame"});
+
+        {
+          auto stage = std::make_unique<mtc::stages::MoveTo>("move_to_place_pose_2", sampling_planner);
+          stage->setGroup(arm);
+          stage->setIKFrame(tcp);
+          stage->properties().configureInitFrom(mtc::Stage::PARENT, {"group"});
+
+          auto end_pose_vec = node_->get_parameter("end_pose").as_double_array();
+          
+          geometry_msgs::msg::PoseStamped target_pose;
+          target_pose.header.frame_id = "base"; 
+          
+          target_pose.pose.position.x = end_pose_vec[0];
+          target_pose.pose.position.y = 1.1;
+          target_pose.pose.position.z = 0.6;
+
+          Eigen::Quaterniond q_x(Eigen::AngleAxisd(-(M_PI / 2), Eigen::Vector3d::UnitX()));
+          Eigen::Quaterniond q_z(Eigen::AngleAxisd(M_PI / 2, Eigen::Vector3d::UnitZ()));
+
+          Eigen::Quaterniond q = q_x * q_z;
+          q.normalize();
+
+          target_pose.pose.orientation.x = q.x();
+          target_pose.pose.orientation.y = q.y();
+          target_pose.pose.orientation.z = q.z();
+          target_pose.pose.orientation.w = q.w();
+
+          stage->setGoal(target_pose);
+          place->insert(std::move(stage));
+        }
+
+        {
+          auto stage = std::make_unique<mtc::stages::MoveTo>("open_hand_release", gripper_planner);
+          stage->setGroup(hand);
+          stage->setGoal("open");
+          place->insert(std::move(stage));
+        }
+
+        {
+          auto stage = std::make_unique<mtc::stages::ModifyPlanningScene>("detach_object");
+          stage->detachObject(object_name, hand);
+          place->insert(std::move(stage));
+        }
+
+        {
+          auto stage = std::make_unique<mtc::stages::MoveRelative>("retreat_right", cartesian_planner);
+          stage->setGroup(arm);
+          stage->setMarkerNS("retreat_right");
+          stage->setMinMaxDistance(0.05, 0.1);
+          
+          geometry_msgs::msg::Vector3Stamped direction;
+          direction.header.frame_id = tcp;
+          direction.vector.z = -1.0;
+          stage->setDirection(direction);
+          place->insert(std::move(stage));
+        }
+
+        {
+          auto stage = std::make_unique<mtc::stages::MoveTo>("right_ready_pose", sampling_planner);
+          stage->setGroup(arm);
+          stage->setGoal("ready");
+          place->insert(std::move(stage));
+        }
+
+        right_robot->insert(std::move(place));
       }
 
-
       task.add(std::move(right_robot));
+
     }
 
     return task;
@@ -285,6 +421,7 @@ int main(int argc, char **argv)
     executor.spin();
     executor.remove_node(mtc_node->getNodeBaseInterface()); });
 
+  rclcpp::sleep_for(std::chrono::seconds(2));
   mtc_node->doTask();
 
   spin_thread->join();

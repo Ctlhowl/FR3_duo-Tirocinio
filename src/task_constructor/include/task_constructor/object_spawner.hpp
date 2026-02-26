@@ -13,11 +13,13 @@ namespace task_constructor
     {
     public:
         ObjectSpawner();
+        void spawn_from_params();
     private:
         void spawn_callback(const geometry_msgs::msg::PoseStamped::SharedPtr msg);
 
         rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr spawn_pub_;
         rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr spawn_sub_;
+        rclcpp::TimerBase::SharedPtr timer_;
 
         moveit::planning_interface::PlanningSceneInterface planning_scene_interface_;
     };

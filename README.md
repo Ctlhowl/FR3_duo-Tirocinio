@@ -51,29 +51,19 @@ xhost +local:root
 cd /ros2_ws
 colcon build --symlink-install
 source install/setup.bash
-ros2 launch franka_fr3_moveit_config moveit_duo.launch.py load_gripper:=true left_robot_ip:=none right_robot_ip:=none use_sim:=true 
-```
-
-### Avviare la scena Moveit Dual Arm con MoveGroupInterface
-Liste dei task disponibili:
-- dual_hand_changing
-- start_pose
-
-```bash
-cd /ros2_ws
-colcon build --symlink-install
-source install/setup.bash
-ros2 launch fr3_motion_control fr3_motion_control.launch.py load_gripper:=true left_robot_ip:=none right_robot_ip:=none use_sim:=true task:=dual_hand_changing
+ros2 launch franka_bringup moveit_duo.launch.py load_gripper:=true left_robot_ip:=none right_robot_ip:=none use_sim:=true 
 ```
 
 ### Generare un oggetto
 1. Avviare moveit
 2. Avviare nodo per la generazione del nodo
 ```bash
+source install/setup.bash
 ros2 run task_constructor object_spawner
 ```
 3. Inviare geometry_msgs::msg::PoseStamped dove generare l'oggetto
 ```bash
+source install/setup.bash
 ros2 topic pub --once /spawn_request geometry_msgs/msg/PoseStamped "{header: {frame_id: 'base'}, pose: {position: {x: 0.5, y: -0.5, z: 0.02}, orientation: {w: 1.0}}}"
 ```
 
@@ -82,5 +72,5 @@ ros2 topic pub --once /spawn_request geometry_msgs/msg/PoseStamped "{header: {fr
 cd /ros2_ws
 colcon build --symlink-install
 source install/setup.bash
-ros2 launch task_constructor mtc.launch.py load_gripper:=true left_robot_ip:=none right_robot_ip:=none use_sim:=true
+ros2 launch task_constructor mtc.launch.py load_gripper:=true use_sim:=true start_pose:="[0.55, -0.2, 1.0]" end_pose:="[0.4]"
 ```

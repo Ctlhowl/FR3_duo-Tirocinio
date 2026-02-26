@@ -5,7 +5,6 @@ from launch import LaunchDescription
 from launch.actions import (
     DeclareLaunchArgument,
 )
-from launch.conditions import UnlessCondition, IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import (
     Command,
@@ -41,6 +40,8 @@ def generate_launch_description():
     load_gripper_parameter_name = 'load_gripper'
     ee_id_parameter_name = 'ee_id'
     use_sim_parameter_name = 'use_sim'
+    start_pose_name = 'start_pose'
+    end_pose_name = 'end_pose'
 
     left_robot_ip = LaunchConfiguration(left_robot_ip_parameter_name)
     right_robot_ip = LaunchConfiguration(right_robot_ip_parameter_name)
@@ -48,6 +49,9 @@ def generate_launch_description():
     load_gripper = LaunchConfiguration(load_gripper_parameter_name)
     ee_id = LaunchConfiguration(ee_id_parameter_name)
     use_sim = LaunchConfiguration(use_sim_parameter_name)
+    
+    start_pose = LaunchConfiguration(start_pose_name) 
+    end_pose = LaunchConfiguration(end_pose_name)
     
 
     # planning_context
@@ -100,6 +104,15 @@ def generate_launch_description():
     ompl_planning_yaml = load_yaml('franka_fr3_moveit_config', 'config/ompl_planning_duo.yaml')
     ompl_planning_pipeline_config['move_group'].update(ompl_planning_yaml)
 
+    run_object_spawner = Node(
+        package='task_constructor',
+        executable='object_spawner',
+        output='screen',
+        parameters=[{
+            "start_pose": start_pose,
+        }]
+    )
+
     run_mtc_node = Node(
         package='task_constructor',
         executable='mtc_node',
@@ -110,19 +123,21 @@ def generate_launch_description():
             kinematics_yaml,
             joint_limits,
             ompl_planning_pipeline_config,
-            {"use_sim_time": True}
+            {
+                "use_sim_time": True,
+                "end_pose": end_pose
+            }
         ],
     )
 
-
     left_robot_arg = DeclareLaunchArgument(
         left_robot_ip_parameter_name,
-        default_value='172.16.0.2',
+        default_value='none',
         description='Hostname or IP address of the left robot.')
 
     right_robot_arg = DeclareLaunchArgument(
         right_robot_ip_parameter_name,
-        default_value='172.16.0.3',
+        default_value='none',
         description='Hostname or IP address of the right robot.')
     
     load_gripper_arg = DeclareLaunchArgument(
@@ -142,11 +157,27 @@ def generate_launch_description():
         default_value='false',
         description='Is the robot being simulated?.'
     )
+
+    start_pose_arg = DeclareLaunchArgument(
+        start_pose_name, 
+        default_value='[0.5, 0.0, 1]',
+        description='Posa dell oggetto come lista [pose.x, pose.y, orientation.z]'
+    )
+
+    end_pose_arg = DeclareLaunchArgument(
+        end_pose_name,
+        default_value='[0.4]',
+        description='Posa finale del braccio destro [pose.x]'
+    )
+
     return LaunchDescription([
         left_robot_arg,
         right_robot_arg,
         load_gripper_arg,
         ee_id_arg,
         use_sim_arg,
-        run_mtc_node
+        start_pose_arg,
+        end_pose_arg,
+        run_object_spawner,
+        run_mtc_node,
     ])

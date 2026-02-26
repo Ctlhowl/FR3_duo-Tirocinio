@@ -3,13 +3,36 @@
 namespace task_constructor
 {
     ObjectSpawner::ObjectSpawner() : Node("object_spawner") {
+        this->declare_parameter("start_pose", std::vector<double>{0.5, -0.5, 1});
+
         spawn_pub_ = this->create_publisher<geometry_msgs::msg::PoseStamped>("/cuboid/set_pose", 10);
 
         spawn_sub_ = this->create_subscription<geometry_msgs::msg::PoseStamped>(
             "/spawn_request", 10, 
             std::bind(&ObjectSpawner::spawn_callback, this, std::placeholders::_1));
+        
+        timer_ = this->create_wall_timer(
+            std::chrono::milliseconds(500), 
+            std::bind(&ObjectSpawner::spawn_from_params, this));
+        
+            RCLCPP_INFO(LOGGER, "[INFO] Nodo Spawner Oggetto avviato.");
+    }
 
-        RCLCPP_INFO(LOGGER, "[INFO] Nodo Spawner Oggetto avviato.");
+    void ObjectSpawner::spawn_from_params() {
+        timer_->cancel();
+
+        auto start_pose_vec = this->get_parameter("start_pose").as_double_array();
+
+        geometry_msgs::msg::PoseStamped msg;
+        msg.header.frame_id = "base";
+        msg.header.stamp = this->now();
+        msg.pose.position.x = start_pose_vec[0];
+        msg.pose.position.y = start_pose_vec[1];;
+        msg.pose.position.z = 0.02;
+        msg.pose.orientation.z = start_pose_vec[2];;
+        msg.pose.orientation.w = 1.0;
+
+        this->spawn_callback(std::make_shared<geometry_msgs::msg::PoseStamped>(msg));
     }
 
     void ObjectSpawner::spawn_callback(const geometry_msgs::msg::PoseStamped::SharedPtr msg) {
