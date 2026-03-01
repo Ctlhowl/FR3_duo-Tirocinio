@@ -72,7 +72,7 @@ ros2 topic pub --once /spawn_request geometry_msgs/msg/PoseStamped "{header: {fr
 cd /ros2_ws
 colcon build --symlink-install
 source install/setup.bash
-ros2 launch task_constructor mtc.launch.py load_gripper:=true use_sim:=true start_pose:="[0.55, -0.2, 1.0]" end_pose:="[0.2, 2.0]"
+ros2 launch task_constructor mtc.launch.py load_gripper:=true use_sim:=true start_pose:="[-0.09, -1.07, 0.04]" end_pose:="[0.2, 2.0]"
 ```
 
 
@@ -85,4 +85,10 @@ sudo apt install ros-humble-plotjuggler-ros
 ros2 bag record /joint_states
 
 ros2 run plotjuggler plotjuggler
+```
+
+```bash
+cd  /ros2_ws
+source install/setup.bash
+python3 /ros2_ws/src/task_constructor/launch/benchmark_mtc.py
 ```

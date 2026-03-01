@@ -2,40 +2,42 @@ import subprocess
 import time
 import random
 import math
+import os
+import signal
 
 # --- PARAMETRI DELLA SPAWN OGGETTO ---
-R_MIN = 0.35
-R_MAX = 0.70 
+BASKET_CENTER_X = -0.04
+BASKET_CENTER_Y = -0.50
+
+R_MIN = 0.25
+R_MAX = 0.7
 Z_ROTATION_MIN = -math.pi
 Z_ROTATION_MAX = math.pi
 
 # --- PARAMETRI DELLO SCAFFALE ---
-END_X_MIN = -0.5
+END_X_MIN = -0.4
 END_X_MAX = 0.5
-END_Y_MIN = 0.0
-END_Y_MAX = 2.0
 
-NUM_RUNS = 20
+NUM_RUNS = 10
 
 def genera_start_pose():
     """Genera coordinate [x, y, yaw] uniformi all'interno del recinto."""
     u = random.uniform(0.0, 1.0)
     r = math.sqrt(u * (R_MAX**2 - R_MIN**2) + R_MIN**2)
-    
     theta = random.uniform(-math.pi, math.pi)
     
-    x = r * math.cos(theta)
-    y = r * math.sin(theta)
-    yaw = random.uniform(Z_ROTATION_MIN, Z_ROTATION_MAX)
+    x = BASKET_CENTER_X + r * math.cos(theta)
+    y = BASKET_CENTER_Y + r * math.sin(theta)
+    yaw = random.uniform(-math.pi, math.pi)
     
-    return [round(x, 3), round(y, 3), round(yaw, 3)]
+    return [round(x, 2), round(y, 2), round(yaw, 2)]
 
 def genera_end_pose():
     """Genera coordinate [x, y] casuali per lo scaffale."""
     end_x = random.uniform(END_X_MIN, END_X_MAX)
-    end_y = random.uniform(END_Y_MIN, END_Y_MAX)
+    end_y = random.choice([0.0, 1.0, 2.0])
     
-    return [round(end_x, 3), round(end_y, 3)]
+    return [round(end_x, 2), round(end_y, 2)]
 
 # --- INIZIO BENCHMARK ---
 successi = 0
@@ -65,7 +67,13 @@ for i in range(NUM_RUNS):
     ]
     
     start_time = time.time()
-    process = subprocess.Popen(comando_launch, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    process = subprocess.Popen(
+        comando_launch, 
+        stdout=subprocess.PIPE, 
+        stderr=subprocess.STDOUT, 
+        text=True,
+        preexec_fn=os.setsid 
+    )
     
     esito_run = "FALLITO" 
     
@@ -73,13 +81,13 @@ for i in range(NUM_RUNS):
         if "Pianificazione del task fallita" in line or "Codice Errore" in line:
             esito_run = "FALLITO"
             print(" -> [!] Errore rilevato durante la pianificazione o l'esecuzione.")
-            process.terminate()
+            os.killpg(os.getpgid(process.pid), signal.SIGINT)
             break
         elif "Cubo rimosso con successo" in line:
             esito_run = "SUCCESSO"
             successi += 1
             print(" -> [✓] Task completato con successo.")
-            process.terminate()
+            os.killpg(os.getpgid(process.pid), signal.SIGINT)
             break
 
     process.wait() 
@@ -90,7 +98,7 @@ for i in range(NUM_RUNS):
     else:
         fallimenti += 1
         
-    time.sleep(2) # Pausa di sicurezza per il simulatore
+    time.sleep(4) # Pausa di sicurezza per il simulatore
 
 # --- STATISTICHE FINALI ---
 print("\n" + "="*40)

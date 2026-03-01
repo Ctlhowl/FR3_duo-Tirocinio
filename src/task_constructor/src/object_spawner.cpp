@@ -19,6 +19,11 @@ namespace task_constructor
     }
 
     void ObjectSpawner::spawn_from_params() {
+        if (spawn_pub_->get_subscription_count() == 0) {
+            RCLCPP_WARN(this->get_logger(), "[WARNING] Simulatore non ancora connesso a /cuboid/set_pose. Riprovo...");
+            return;
+        }
+
         timer_->cancel();
 
         auto start_pose_vec = this->get_parameter("start_pose").as_double_array();
