@@ -160,14 +160,14 @@ def generate_launch_description():
 
     start_pose_arg = DeclareLaunchArgument(
         start_pose_name, 
-        default_value='[0.5, 0.0, 1]',
+        default_value='[0.5, 0.0, 1.0]',
         description='Posa dell oggetto come lista [pose.x, pose.y, orientation.z]'
     )
 
     end_pose_arg = DeclareLaunchArgument(
         end_pose_name,
-        default_value='[0.4]',
-        description='Posa finale del braccio destro [pose.x]'
+        default_value='[0.2, 0.0]',
+        description='Posa finale del braccio destro [pose.x, pose.z]'
     )
 
     return LaunchDescription([
